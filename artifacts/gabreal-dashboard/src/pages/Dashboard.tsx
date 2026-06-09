@@ -258,10 +258,9 @@ function PrioritiesPanel() {
   );
 }
 
-// ─── View: HOME ───────────────────────────────────────────────────────────────
-function HomeView() {
-  const [calOpen, setCalOpen] = useState(false);
-  const closeCalendar = useCallback(() => setCalOpen(false), []);
+// ─── Sage Chat Widget (floating, available on all tabs) ───────────────────────
+function SageChatWidget() {
+  const [open, setOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<{ role: "sage" | "user"; text: string }[]>([
     { role: "sage", text: "Good morning! You have 4 meetings today and 3 items in your queue. Your highest priority is the Luna Vita reply — Kea has been waiting since this morning." },
   ]);
@@ -269,11 +268,9 @@ function HomeView() {
   const [sending, setSending] = useState(false);
   const messagesRef = useRef<HTMLDivElement>(null);
 
-  function scrollToBottom() {
+  useEffect(() => {
     if (messagesRef.current) messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
-  }
-
-  useEffect(() => { scrollToBottom(); }, [chatMessages]);
+  }, [chatMessages, open]);
 
   function sendChat() {
     const msg = chatInput.trim();
@@ -288,15 +285,68 @@ function HomeView() {
   }
 
   return (
+    <>
+      {/* Floating button in nav */}
+      <button
+        className={`sage-fab ${open ? "sage-fab-open" : ""}`}
+        onClick={() => setOpen(o => !o)}
+        title="Sage — your executive partner"
+      >
+        <span className="sage-fab-icon">✦</span>
+        <span className="sage-fab-label">Sage</span>
+      </button>
+
+      {/* Floating chat panel */}
+      {open && (
+        <div className="sage-panel">
+          <div className="sage-panel-header">
+            <div>
+              <div style={{ fontFamily: "'Playfair Display', serif", fontWeight: 500, fontSize: 16 }}>Sage</div>
+              <div style={{ fontSize: 11, color: "var(--text-xsoft)", marginTop: 1 }}>Your executive partner · ready to help</div>
+            </div>
+            <button className="cal-icon-btn" onClick={() => setOpen(false)}>✕</button>
+          </div>
+          <div className="chat-messages sage-panel-messages" ref={messagesRef}>
+            {chatMessages.map((m, i) => (
+              <div key={i} className={`chat-msg ${m.role}`}>{m.text}</div>
+            ))}
+            {sending && <div className="chat-msg sage" style={{ opacity: 0.6 }}>...</div>}
+          </div>
+          <div className="sage-panel-footer">
+            <div className="chat-input-row">
+              <input
+                className="chat-input"
+                type="text"
+                placeholder="Ask Sage anything..."
+                value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") sendChat(); }}
+                autoFocus
+              />
+              <button className="btn-send-chat" onClick={sendChat}>Send</button>
+            </div>
+            <div className="powered-by" style={{ marginTop: 6 }}>Powered by Claude via Supabase</div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ─── View: HOME ───────────────────────────────────────────────────────────────
+function HomeView() {
+  const [calOpen, setCalOpen] = useState(false);
+  const closeCalendar = useCallback(() => setCalOpen(false), []);
+
+  return (
     <div>
       <div className="page-header">
         <h1 className="page-greeting">{getGreeting()}, Gabby.</h1>
       </div>
 
       <div className="home-grid">
-        {/* LEFT */}
+        {/* LEFT — Schedule */}
         <div>
-          {/* Schedule */}
           <div className="card">
             <div className="card-header">
               <div>
@@ -319,90 +369,16 @@ function HomeView() {
             </button>
           </div>
 
-          {/* Needs Attention */}
-          <div className="card">
-            <div className="card-header">
-              <div>
-                <div className="card-label">Needs Your Attention</div>
-                <div className="card-subtitle" style={{ marginBottom: 0 }}>Proposals from Amber</div>
-              </div>
-              <RefreshBtn />
-            </div>
-            <div className="filter-pills" style={{ marginTop: 12 }}>
-              <button className="pill active">All (2)</button>
-              <button className="pill">Urgent (1)</button>
-              <button className="pill">Action (1)</button>
-            </div>
-
-            <div className="attention-card">
-              <div className="attention-meta">
-                <span className="badge badge-high">HIGH</span>
-                <span className="badge badge-source">Gmail</span>
-                <span className="badge badge-client">Luna Vita</span>
-                <span className="badge-time">2 hours ago</span>
-              </div>
-              <div className="attention-summary">Kea replied asking about the brand deck timeline</div>
-              <div className="attention-why">Active deliverable in progress — client is waiting on your response</div>
-              <div className="draft-label">Draft Reply</div>
-              <textarea className="draft-textarea" defaultValue="Hey Kea! The brand deck is coming together beautifully. I'm targeting end of day Friday to send over the first full draft. Want to set up a quick 20-minute review call for next Monday? Let me know what works!" />
-              <div className="action-btns">
-                <button className="btn btn-send">Send ✓</button>
-                <button className="btn btn-approve">Edit + Send ✎</button>
-                <button className="btn btn-dismiss">Dismiss</button>
-              </div>
-            </div>
-
-            <div className="attention-card">
-              <div className="attention-meta">
-                <span className="badge badge-task">TASK</span>
-                <span className="badge badge-source">Meeting Notes</span>
-                <span className="badge badge-client">LACES</span>
-                <span className="badge-time">yesterday</span>
-              </div>
-              <div className="attention-summary">Send updated Klaviyo flow proposal to Jeff by Thursday</div>
-              <div className="attention-why">From LACES strategy call — Jeff expecting follow-up this week</div>
-              <div className="action-btns">
-                <button className="btn btn-approve">Approve ✓</button>
-                <button className="btn btn-send">Edit + Approve ✎</button>
-                <button className="btn btn-dismiss">Deny ✕</button>
-              </div>
-            </div>
-          </div>
-
-          {/* Sage Chat */}
-          <div className="card">
-            <div className="card-header">
-              <div>
-                <div className="card-label">Sage</div>
-                <div className="card-subtitle" style={{ marginBottom: 0 }}>Ready to help.</div>
-              </div>
-            </div>
-            <div className="sage-chat" style={{ marginTop: 12 }}>
-              <div className="chat-messages" ref={messagesRef}>
-                {chatMessages.map((m, i) => (
-                  <div key={i} className={`chat-msg ${m.role}`}>{m.text}</div>
-                ))}
-                {sending && <div className="chat-msg sage" style={{ opacity: 0.6 }}>...</div>}
-              </div>
-              <div className="chat-input-row">
-                <input
-                  className="chat-input"
-                  type="text"
-                  placeholder="Ask Sage anything..."
-                  value={chatInput}
-                  onChange={e => setChatInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter") sendChat(); }}
-                />
-                <button className="btn-send-chat" onClick={sendChat}>Send</button>
-              </div>
-              <div className="powered-by">Powered by Claude via Supabase</div>
-            </div>
+          {/* Liala Preview */}
+          <div className="card" style={{ background: "linear-gradient(135deg, rgba(180,120,220,0.15), rgba(232,160,64,0.1))", cursor: "pointer" }}>
+            <div className="card-label" style={{ color: "#9060C0" }}>Liala · Spirit Team</div>
+            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, marginBottom: 6, letterSpacing: "-0.3px" }}>Soft Power</div>
+            <div style={{ fontSize: 13, color: "var(--text-soft)", fontStyle: "italic", lineHeight: 1.6 }}>You're in your luteal phase — the time of the wise woman. Your energy turns inward today. Finish what's already in motion.</div>
           </div>
         </div>
 
-        {/* RIGHT */}
+        {/* RIGHT — Priorities + Mac Mini */}
         <div>
-          {/* Today's Priorities */}
           <div className="card">
             <div className="card-header">
               <div>
@@ -414,7 +390,6 @@ function HomeView() {
             <PrioritiesPanel />
           </div>
 
-          {/* Mac Mini */}
           <div className="card">
             <div className="card-label">Mac Mini</div>
             <div className="card-subtitle">Remote control your agent hub</div>
@@ -431,12 +406,59 @@ function HomeView() {
               </button>
             </div>
           </div>
+        </div>
+      </div>
 
-          {/* Liala Preview */}
-          <div className="card" style={{ background: "linear-gradient(135deg, rgba(180,120,220,0.15), rgba(232,160,64,0.1))", cursor: "pointer" }}>
-            <div className="card-label" style={{ color: "#9060C0" }}>Liala · Spirit Team</div>
-            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, marginBottom: 6, letterSpacing: "-0.3px" }}>Soft Power</div>
-            <div style={{ fontSize: 13, color: "var(--text-soft)", fontStyle: "italic", lineHeight: 1.6 }}>You're in your luteal phase — the time of the wise woman. Your energy turns inward today. Finish what's already in motion.</div>
+      {/* Full-width Needs Attention */}
+      <div className="card" style={{ marginTop: 0 }}>
+        <div className="card-header">
+          <div>
+            <div className="card-label">Needs Your Attention</div>
+            <div className="card-subtitle" style={{ marginBottom: 0 }}>Proposals from Amber</div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div className="filter-pills" style={{ margin: 0 }}>
+              <button className="pill active">All (2)</button>
+              <button className="pill">Urgent (1)</button>
+              <button className="pill">Action (1)</button>
+            </div>
+            <RefreshBtn />
+          </div>
+        </div>
+
+        <div className="attention-grid">
+          <div className="attention-card">
+            <div className="attention-meta">
+              <span className="badge badge-high">HIGH</span>
+              <span className="badge badge-source">Gmail</span>
+              <span className="badge badge-client">Luna Vita</span>
+              <span className="badge-time">2 hours ago</span>
+            </div>
+            <div className="attention-summary">Kea replied asking about the brand deck timeline</div>
+            <div className="attention-why">Active deliverable in progress — client is waiting on your response</div>
+            <div className="draft-label">Draft Reply</div>
+            <textarea className="draft-textarea" defaultValue="Hey Kea! The brand deck is coming together beautifully. I'm targeting end of day Friday to send over the first full draft. Want to set up a quick 20-minute review call for next Monday? Let me know what works!" />
+            <div className="action-btns">
+              <button className="btn btn-send">Send ✓</button>
+              <button className="btn btn-approve">Edit + Send ✎</button>
+              <button className="btn btn-dismiss">Dismiss</button>
+            </div>
+          </div>
+
+          <div className="attention-card">
+            <div className="attention-meta">
+              <span className="badge badge-task">TASK</span>
+              <span className="badge badge-source">Meeting Notes</span>
+              <span className="badge badge-client">LACES</span>
+              <span className="badge-time">yesterday</span>
+            </div>
+            <div className="attention-summary">Send updated Klaviyo flow proposal to Jeff by Thursday</div>
+            <div className="attention-why">From LACES strategy call — Jeff expecting follow-up this week</div>
+            <div className="action-btns">
+              <button className="btn btn-approve">Approve ✓</button>
+              <button className="btn btn-send">Edit + Approve ✎</button>
+              <button className="btn btn-dismiss">Deny ✕</button>
+            </div>
           </div>
         </div>
       </div>
@@ -800,7 +822,10 @@ export default function Dashboard() {
             </button>
           ))}
         </div>
-        <div className="nav-date">{formatDate()}</div>
+        <div className="nav-right">
+          <SageChatWidget />
+          <div className="nav-date">{formatDate()}</div>
+        </div>
       </nav>
 
       <main className="main">
