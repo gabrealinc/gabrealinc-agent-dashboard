@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import CalendarModal from "@/components/CalendarModal";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function getGreeting() {
@@ -131,6 +132,8 @@ function InvoiceStatus({ s }: { s: string }) {
 
 // ─── View: HOME ───────────────────────────────────────────────────────────────
 function HomeView() {
+  const [calOpen, setCalOpen] = useState(false);
+  const closeCalendar = useCallback(() => setCalOpen(false), []);
   const [chatMessages, setChatMessages] = useState<{ role: "sage" | "user"; text: string }[]>([
     { role: "sage", text: "Good morning! You have 4 meetings today and 3 items in your queue. Your highest priority is the Luna Vita reply — Kea has been waiting since this morning." },
   ]);
@@ -179,7 +182,13 @@ function HomeView() {
                 <span className="schedule-name">{s.event}</span>
               </div>
             ))}
-            <a href="#" className="card-link">View full calendar →</a>
+            <button
+              className="card-link"
+              style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
+              onClick={() => setCalOpen(true)}
+            >
+              View full calendar →
+            </button>
           </div>
 
           {/* Needs Attention */}
@@ -312,6 +321,8 @@ function HomeView() {
           </div>
         </div>
       </div>
+
+      {calOpen && <CalendarModal onClose={closeCalendar} />}
     </div>
   );
 }
