@@ -125,11 +125,36 @@ const INTEL_ITEMS = [
 ];
 
 const CLIENTS = [
-  { name: "Luna Vita", contact: "Kea Moran", type: "Brand Identity + Social", status: "Active", tags: ["Brand", "Social", "Strategy"] },
-  { name: "LACES", contact: "Jeff Williams", type: "Email Marketing Strategy", status: "Active", tags: ["Email", "Klaviyo", "Campaigns"] },
-  { name: "Luxx", contact: "Marcus Reid", type: "Website + Branding", status: "Active", tags: ["Web", "Brand"] },
-  { name: "Issa Rae Media", contact: "Issa Rae", type: "Campaign Design", status: "Active", tags: ["Design", "Campaign"] },
-  { name: "Bluebell", contact: "Sarah Chen", type: "Social Content", status: "Needs Attention", tags: ["Social", "Content"] },
+  {
+    name: "Luna Vita", contact: "Kea Moran", email: "kea@lunavita.com", phone: "(310) 555-0182",
+    type: "Brand Identity + Social", status: "Active", tags: ["Brand", "Social", "Strategy"],
+    value: 4800, valueLabel: "monthly", nextMeeting: "Jun 12 · 2:00 PM",
+    lastActivity: "Sent brand deck v2 · Jun 8", deliverables: 3, notionUrl: "https://notion.so",
+  },
+  {
+    name: "LACES", contact: "Jeff Williams", email: "jeff@lacesatl.com", phone: "(404) 555-0247",
+    type: "Email Marketing Strategy", status: "Needs Attention", tags: ["Email", "Klaviyo", "Campaigns"],
+    value: 5000, valueLabel: "monthly", nextMeeting: "Jun 10 · 10:00 AM",
+    lastActivity: "Klaviyo flow proposal sent · Jun 7", deliverables: 2, notionUrl: "https://notion.so",
+  },
+  {
+    name: "Luxx", contact: "Marcus Reid", email: "marcus@luxxco.com", phone: "(323) 555-0391",
+    type: "Website + Branding", status: "Active", tags: ["Web", "Brand"],
+    value: 12000, valueLabel: "project", nextMeeting: "Jun 14 · 3:30 PM",
+    lastActivity: "Homepage wireframes approved · Jun 5", deliverables: 4, notionUrl: "https://notion.so",
+  },
+  {
+    name: "Issa Rae Media", contact: "Issa Rae", email: "team@issaraemedia.com", phone: "(213) 555-0118",
+    type: "Campaign Design", status: "Active", tags: ["Design", "Campaign"],
+    value: 2400, valueLabel: "monthly", nextMeeting: "Jun 18 · 1:00 PM",
+    lastActivity: "Campaign assets delivered · May 28", deliverables: 1, notionUrl: "https://notion.so",
+  },
+  {
+    name: "Bluebell", contact: "Sophie Okafor", email: "sophie@bluebellbrand.com", phone: "(415) 555-0276",
+    type: "Social Content", status: "Paused", tags: ["Social", "Content"],
+    value: 1800, valueLabel: "monthly", nextMeeting: "—",
+    lastActivity: "Contract paused · May 15", deliverables: 0, notionUrl: "https://notion.so",
+  },
 ];
 
 const AGENTS = [
@@ -598,36 +623,247 @@ function HomeView() {
   );
 }
 
+// ─── New Client Modal ─────────────────────────────────────────────────────────
+const SERVICE_OPTIONS = ["Brand Identity", "Social Content", "Email Marketing", "Website", "Campaign Design", "Strategy", "Consulting", "Other"];
+
+function NewClientModal({ onClose }: { onClose: () => void }) {
+  const [form, setForm] = useState({
+    name: "", contact: "", email: "", phone: "",
+    services: [] as string[], contractType: "monthly",
+    value: "", startDate: "", notes: "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+
+  function toggleService(s: string) {
+    setForm(f => ({
+      ...f,
+      services: f.services.includes(s) ? f.services.filter(x => x !== s) : [...f.services, s],
+    }));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError("");
+    try {
+      const res = await fetch("/api/create-notion-client", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) throw new Error("API error");
+      setSaved(true);
+      setTimeout(onClose, 2000);
+    } catch {
+      setError("Could not create in Notion — configure SUPABASE_URL to connect live data.");
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-panel" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div>
+            <div className="modal-title">New Client</div>
+            <div className="modal-sub">Creates a new page in your Notion CRM · powered by Milli</div>
+          </div>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+
+        {saved ? (
+          <div className="ncm-success">
+            <div style={{ fontSize: 40 }}>✓</div>
+            <div>Client created in Notion!</div>
+            <div style={{ fontSize: 13, color: "var(--text-soft)", fontFamily: "'Inter', sans-serif" }}>Closing…</div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="ncm-form">
+            <div className="ncm-row-2">
+              <div className="ncm-field">
+                <label className="ncm-label">Company Name *</label>
+                <input className="ncm-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required placeholder="e.g. Luna Vita" />
+              </div>
+              <div className="ncm-field">
+                <label className="ncm-label">Contact Name *</label>
+                <input className="ncm-input" value={form.contact} onChange={e => setForm(f => ({ ...f, contact: e.target.value }))} required placeholder="e.g. Kea Moran" />
+              </div>
+            </div>
+            <div className="ncm-row-2">
+              <div className="ncm-field">
+                <label className="ncm-label">Email *</label>
+                <input className="ncm-input" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} required placeholder="contact@company.com" />
+              </div>
+              <div className="ncm-field">
+                <label className="ncm-label">Phone</label>
+                <input className="ncm-input" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="(555) 000-0000" />
+              </div>
+            </div>
+            <div className="ncm-field">
+              <label className="ncm-label">Services</label>
+              <div className="ncm-services">
+                {SERVICE_OPTIONS.map(s => (
+                  <button type="button" key={s}
+                    className={`ncm-service-btn ${form.services.includes(s) ? "selected" : ""}`}
+                    onClick={() => toggleService(s)}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="ncm-row-2">
+              <div className="ncm-field">
+                <label className="ncm-label">Contract Type</label>
+                <select className="ncm-input" value={form.contractType} onChange={e => setForm(f => ({ ...f, contractType: e.target.value }))}>
+                  <option value="monthly">Monthly Retainer</option>
+                  <option value="project">Project-Based</option>
+                </select>
+              </div>
+              <div className="ncm-field">
+                <label className="ncm-label">Value ($)</label>
+                <input className="ncm-input" type="number" value={form.value} onChange={e => setForm(f => ({ ...f, value: e.target.value }))} placeholder="0" min="0" />
+              </div>
+            </div>
+            <div className="ncm-field">
+              <label className="ncm-label">Start Date</label>
+              <input className="ncm-input" type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} />
+            </div>
+            <div className="ncm-field">
+              <label className="ncm-label">Notes / Goals</label>
+              <textarea className="ncm-textarea" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Project overview, goals, anything important to note…" rows={3} />
+            </div>
+            {error && <div style={{ fontSize: 12, color: "#C04040", background: "rgba(200,60,60,0.08)", padding: "8px 12px", borderRadius: 8 }}>{error}</div>}
+            <div className="ncm-footer">
+              <button type="button" className="btn" onClick={onClose}>Cancel</button>
+              <button type="submit" className="btn btn-accent" disabled={saving}>
+                {saving ? "Creating…" : "✦ Create in Notion"}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── View: CLIENTS ────────────────────────────────────────────────────────────
 function ClientsView() {
+  const [filter, setFilter] = useState<"all" | "Active" | "Needs Attention" | "Paused">("all");
+  const [showNewClient, setShowNewClient] = useState(false);
+
+  const filtered = filter === "all" ? CLIENTS : CLIENTS.filter(c => c.status === filter);
+  const activeClients = CLIENTS.filter(c => c.status === "Active");
+  const monthlyRetainer = activeClients.filter(c => c.valueLabel === "monthly").reduce((s, c) => s + c.value, 0);
+  const totalDeliverables = CLIENTS.reduce((s, c) => s + c.deliverables, 0);
+  const nextMtg = CLIENTS.find(c => c.nextMeeting !== "—");
+
+  const AVATAR_COLORS = ["#E8A040", "#9060C0", "#60A878", "#C06060", "#4080C0"];
+
   return (
     <div>
       <div className="page-header">
         <h1 className="page-greeting">Clients</h1>
         <p className="page-subtitle">Your active roster · synced from Notion</p>
       </div>
-      <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div className="filter-pills">
-          <button className="pill active">All ({CLIENTS.length})</button>
-          <button className="pill">Active</button>
-          <button className="pill">Needs Attention</button>
+
+      {/* Summary stats */}
+      <div className="four-col" style={{ marginBottom: 20 }}>
+        <div className="stat-card">
+          <div className="stat-label">Active Clients</div>
+          <div className="stat-value">{activeClients.length}</div>
+          <div className="stat-sub">{CLIENTS.length} total</div>
         </div>
-        <button className="btn btn-accent">+ New Client</button>
+        <div className="stat-card">
+          <div className="stat-label">Monthly Retainer</div>
+          <div className="stat-value">${monthlyRetainer.toLocaleString()}</div>
+          <div className="stat-sub">Recurring revenue</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Active Deliverables</div>
+          <div className="stat-value">{totalDeliverables}</div>
+          <div className="stat-sub">Across all clients</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Next Meeting</div>
+          <div className="stat-value" style={{ fontSize: 16, lineHeight: 1.2 }}>{nextMtg?.name ?? "—"}</div>
+          <div className="stat-sub">{nextMtg?.nextMeeting ?? ""}</div>
+        </div>
       </div>
-      {CLIENTS.map((c, i) => (
-        <div className="client-card" key={i}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-            <div>
-              <div className="client-name">{c.name}</div>
-              <div className="client-meta">{c.contact} · {c.type}</div>
-            </div>
-            <span className={c.status === "Active" ? "status-paid" : "status-pending"}>{c.status}</span>
-          </div>
-          <div className="client-tags">
-            {c.tags.map((t, j) => <span className="client-tag" key={j}>{t}</span>)}
-          </div>
+
+      {/* Toolbar */}
+      <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+        <div className="filter-pills">
+          {(["all", "Active", "Needs Attention", "Paused"] as const).map(f => (
+            <button key={f} className={`pill ${filter === f ? "active" : ""}`} onClick={() => setFilter(f)}>
+              {f === "all" ? `All (${CLIENTS.length})` : `${f} (${CLIENTS.filter(c => c.status === f).length})`}
+            </button>
+          ))}
         </div>
-      ))}
+        <button className="btn btn-accent" onClick={() => setShowNewClient(true)}>+ New Client</button>
+      </div>
+
+      {/* Client cards */}
+      {filtered.map((c, i) => {
+        const initials = c.name.split(" ").map((w: string) => w[0]).join("").slice(0, 2);
+        const color = AVATAR_COLORS[i % AVATAR_COLORS.length];
+        const borderClass = `status-border-${c.status.replace(/ /g, "-").toLowerCase()}`;
+        const badgeClass = `cstatus-${c.status.replace(/ /g, "-").toLowerCase()}`;
+        return (
+          <div className={`client-card-v2 ${borderClass}`} key={i}>
+            <div className="ccv2-header">
+              <div className="ccv2-avatar" style={{ background: color }}>{initials}</div>
+              <div className="ccv2-info">
+                <div className="ccv2-name">{c.name}</div>
+                <div className="ccv2-contact">
+                  {c.contact} · <a href={`mailto:${c.email}`} className="ccv2-link">{c.email}</a>
+                  {c.phone && <span style={{ color: "var(--text-xsoft)" }}> · {c.phone}</span>}
+                </div>
+              </div>
+              <div className="ccv2-header-right">
+                <span className={`client-status-badge ${badgeClass}`}>{c.status}</span>
+                <div className="ccv2-value">
+                  ${c.value.toLocaleString()}
+                  <span className="ccv2-value-label">/{c.valueLabel === "monthly" ? "mo" : "project"}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="ccv2-details">
+              <div className="ccv2-detail-item">
+                <span className="ccv2-detail-label">Services</span>
+                <span className="ccv2-detail-val">{c.type}</span>
+              </div>
+              <div className="ccv2-detail-item">
+                <span className="ccv2-detail-label">Next Meeting</span>
+                <span className="ccv2-detail-val">{c.nextMeeting}</span>
+              </div>
+              <div className="ccv2-detail-item">
+                <span className="ccv2-detail-label">Last Activity</span>
+                <span className="ccv2-detail-val">{c.lastActivity}</span>
+              </div>
+              <div className="ccv2-detail-item">
+                <span className="ccv2-detail-label">Deliverables</span>
+                <span className="ccv2-detail-val">{c.deliverables} active</span>
+              </div>
+            </div>
+
+            <div className="ccv2-footer">
+              <div className="client-tags">
+                {c.tags.map((t: string, j: number) => <span className="client-tag" key={j}>{t}</span>)}
+              </div>
+              <div className="ccv2-actions">
+                <button className="ccv2-action-btn" onClick={() => window.open(c.notionUrl, "_blank")}>Open in Notion ↗</button>
+                <button className="ccv2-action-btn" onClick={() => { window.location.href = `mailto:${c.email}`; }}>Email</button>
+                <button className="ccv2-action-btn" onClick={() => alert(`Invoice history for ${c.name}`)}>Invoices</button>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+
+      {showNewClient && <NewClientModal onClose={() => setShowNewClient(false)} />}
     </div>
   );
 }
