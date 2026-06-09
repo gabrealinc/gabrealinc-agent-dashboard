@@ -245,7 +245,6 @@ function PrioritiesPanel() {
           >
             <div className="task-check" onClick={e => { e.stopPropagation(); cycleStatus(t, e); }} title="Click to advance status" />
             <div className="task-name">{t.name}</div>
-            <div className="task-client-chip">{t.client}</div>
             <div className="task-date">{t.date}</div>
             <button
               className={`task-status-pill ${

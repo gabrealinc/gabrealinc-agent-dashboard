@@ -1072,15 +1072,14 @@ body {
   background: rgba(255, 248, 238, 0.85);
 }
 
-/* ─── ATTENTION GRID (full-width two-col) ────────────────────── */
+/* ─── ATTENTION GRID (single column full-width) ──────────────── */
 .attention-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 14px;
   margin-top: 14px;
 }
 @media (max-width: 900px) {
-  .attention-grid { grid-template-columns: 1fr; }
   .sage-panel { right: 12px; width: calc(100vw - 24px); }
 }
 
