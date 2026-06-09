@@ -157,15 +157,118 @@ const CLIENTS = [
   },
 ];
 
-const AGENTS = [
-  { name: "Amber", role: "Communication Manager", status: "active", desc: "Monitors Gmail, Slack, and WhatsApp. Classifies, drafts replies, executes approved dashboard actions.", last: "12 minutes ago · 3 items in queue" },
-  { name: "Mae", role: "System Librarian", status: "active", desc: "Audits Notion, cleans stale data, syncs file structure, ensures everything other agents read is accurate and current.", last: "45 minutes ago · All systems nominal" },
-  { name: "Liala", role: "Spirit Team", status: "active", desc: "Daily morning ritual — cycle phase guidance, meals, movement, nervous system support, and spiritual practice.", last: "7:00 AM · Day 22 Luteal" },
-  { name: "Nancy", role: "Research Analyst", status: "scheduled", desc: "Monitors client industries, AI developments, market trends, and business opportunities. Posts daily intelligence brief.", last: "7:30 AM · 3 items surfaced" },
-  { name: "Milli", role: "Finance Watchdog", status: "scheduled", desc: "QuickBooks, Gusto, GHL, Stripe — monitors business and personal finances, flags overdue invoices and tax deadlines.", last: "7:45 AM · 1 flag: $5,000 pending" },
-  { name: "Sage", role: "Executive Partner", status: "active", desc: "Morning standup, daily priorities, opportunity scan. Reads all other agent reports and delivers your 8am brief to Slack.", last: "8:02 AM · Brief delivered to Slack" },
-  { name: "Milton", role: "Meeting Intelligence", status: "idle", desc: "Pulls from Granola, processes meeting transcripts, extracts action items, and proposes tasks to dashboard at 5pm.", last: "Yesterday 5:02 PM · 3 tasks proposed" },
-  { name: "Lennard", role: "Legal / HR", status: "idle", desc: "Weekly legal, tax, and HR compliance check — CA filings, payroll, contracts, IRS deadlines. Runs Tuesdays.", last: "Tuesday · All clear" },
+type AgentActivity = { time: string; label: string; note: string; tag: "URGENT" | "ACTION" | "FYI" | "DONE" | "FLAG" };
+type Agent = {
+  name: string; role: string; status: "active" | "scheduled" | "idle";
+  desc: string; last: string;
+  report: { summary: string; items: AgentActivity[] };
+};
+
+const AGENTS: Agent[] = [
+  {
+    name: "Amber", role: "Communication Manager", status: "active",
+    desc: "Monitors Gmail, Slack, and WhatsApp. Classifies, drafts replies, executes approved dashboard actions.",
+    last: "12 minutes ago · 3 items in queue",
+    report: {
+      summary: "3 items in your queue need attention. 1 urgent client reply, 1 proposal approval, and 1 vendor FYI flagged from this morning.",
+      items: [
+        { time: "12 min ago", label: "Gmail · Kea (Luna Vita)", note: "Replied asking about the brand deck timeline. Draft ready for review.", tag: "URGENT" },
+        { time: "1 hr ago",   label: "Klaviyo proposal · Jeff (LACES)", note: "Updated flow proposal ready — approve to send.", tag: "ACTION" },
+        { time: "3 hrs ago",  label: "Printful vendor quote", note: "Merch pricing for Luna Vita launch. No action needed.", tag: "FYI" },
+      ],
+    },
+  },
+  {
+    name: "Mae", role: "System Librarian", status: "active",
+    desc: "Audits Notion, cleans stale data, syncs file structure, ensures everything other agents read is accurate and current.",
+    last: "45 minutes ago · All systems nominal",
+    report: {
+      summary: "Morning audit complete. All Notion databases clean, no stale tasks or duplicate pages found. File structure synced.",
+      items: [
+        { time: "45 min ago", label: "Notion audit complete", note: "7 databases scanned. 0 issues found.", tag: "DONE" },
+        { time: "6:30 AM",    label: "Removed 2 duplicate client pages", note: "Luna Vita sandbox and draft merged into main client page.", tag: "DONE" },
+        { time: "Yesterday",  label: "LACES folder reorganised", note: "Assets, contracts, and briefs moved to standardised structure.", tag: "DONE" },
+      ],
+    },
+  },
+  {
+    name: "Liala", role: "Spirit Team", status: "active",
+    desc: "Daily morning ritual — cycle phase guidance, meals, movement, nervous system support, and spiritual practice.",
+    last: "7:00 AM · Day 22 Luteal",
+    report: {
+      summary: "Day 22 · Luteal phase. Energy turns inward — finishing > starting. High cortisol window 9–11am. Protect the afternoon.",
+      items: [
+        { time: "7:00 AM", label: "Phase guidance delivered", note: "Luteal day 22. Soft Power theme. Intention: finish what's in motion.", tag: "DONE" },
+        { time: "7:00 AM", label: "Movement rec: slow yoga or walk", note: "No HIIT this week — nervous system in recovery mode.", tag: "FYI" },
+        { time: "7:00 AM", label: "Nutrition note", note: "Prioritise magnesium + complex carbs today. Reduce caffeine after 12pm.", tag: "FYI" },
+      ],
+    },
+  },
+  {
+    name: "Nancy", role: "Research Analyst", status: "scheduled",
+    desc: "Monitors client industries, AI developments, market trends, and business opportunities. Posts daily intelligence brief.",
+    last: "7:30 AM · 3 items surfaced",
+    report: {
+      summary: "3 intelligence items surfaced this morning. 1 direct opportunity flagged for your review — a brand partnership call from a peer agency.",
+      items: [
+        { time: "7:30 AM", label: "Opportunity · Agency partnership", note: "Mila & Co looking for a creative sub-contractor for Q3. Warm intro available.", tag: "FLAG" },
+        { time: "7:30 AM", label: "AI trend · Canva launches AI video", note: "Relevant to Luna Vita content strategy. May shift their production budget.", tag: "FYI" },
+        { time: "7:30 AM", label: "Industry · DTC beauty CPMs up 18%", note: "Luna Vita and LACES ad budgets may need reforecast for Q3.", tag: "FYI" },
+      ],
+    },
+  },
+  {
+    name: "Milli", role: "Finance Watchdog", status: "scheduled",
+    desc: "QuickBooks, Gusto, GHL, Stripe — monitors business and personal finances, flags overdue invoices and tax deadlines.",
+    last: "7:45 AM · 1 flag: $5,000 pending",
+    report: {
+      summary: "1 flag this morning: LACES invoice #1047 ($5,000) is 4 days past due. All other invoices current. Payroll runs Friday — no issues.",
+      items: [
+        { time: "7:45 AM", label: "Invoice overdue · LACES #1047", note: "$5,000 — 4 days past due. Nudge sent via GHL. Follow up if no response by EOD.", tag: "FLAG" },
+        { time: "7:45 AM", label: "Payroll · Friday $3,200", note: "Gusto scheduled. Sufficient balance confirmed.", tag: "DONE" },
+        { time: "7:45 AM", label: "Monthly revenue · $24,850 Jun MTD", note: "On track for $28k target. 3 invoices outstanding.", tag: "FYI" },
+      ],
+    },
+  },
+  {
+    name: "Sage", role: "Executive Partner", status: "active",
+    desc: "Morning standup, daily priorities, opportunity scan. Reads all other agent reports and delivers your 8am brief to Slack.",
+    last: "8:02 AM · Brief delivered to Slack",
+    report: {
+      summary: "Good morning brief delivered at 8:02am. 4 meetings today, 3 priority tasks, 1 opportunity flagged by Nancy. Amber has 3 items needing your approval.",
+      items: [
+        { time: "8:02 AM", label: "Morning brief sent to Slack", note: "All 7 agent reports compiled. 4 action items surfaced for you.", tag: "DONE" },
+        { time: "8:02 AM", label: "Opportunity flagged", note: "Nancy flagged a brand partnership lead — review in Intelligence tab.", tag: "FLAG" },
+        { time: "8:02 AM", label: "Highest priority today", note: "Luna Vita brand deck — Kea is waiting. Target: send draft by EOD Friday.", tag: "ACTION" },
+      ],
+    },
+  },
+  {
+    name: "Milton", role: "Meeting Intelligence", status: "idle",
+    desc: "Pulls from Granola, processes meeting transcripts, extracts action items, and proposes tasks to dashboard at 5pm.",
+    last: "Yesterday 5:02 PM · 3 tasks proposed",
+    report: {
+      summary: "Yesterday's 5pm run processed 2 meetings. 3 action items proposed to dashboard — 2 accepted, 1 pending. Next run at 5pm today.",
+      items: [
+        { time: "Yesterday 5:02 PM", label: "LACES strategy call processed", note: "Extracted: send Klaviyo proposal, book next call, share deck draft.", tag: "DONE" },
+        { time: "Yesterday 5:02 PM", label: "Ryan Lands check-in processed", note: "1 action item: follow up on contract renewal by Jun 12.", tag: "DONE" },
+        { time: "Next run",          label: "Scheduled for 5:00 PM today", note: "Will process today's Luna Vita and Ryan Lands meetings.", tag: "FYI" },
+      ],
+    },
+  },
+  {
+    name: "Lennard", role: "Legal / HR", status: "idle",
+    desc: "Weekly legal, tax, and HR compliance check — CA filings, payroll, contracts, IRS deadlines. Runs Tuesdays.",
+    last: "Tuesday · All clear",
+    report: {
+      summary: "Tuesday compliance check complete. No outstanding filings, deadlines, or contract issues. Next run Tuesday June 16.",
+      items: [
+        { time: "Tuesday", label: "CA compliance check", note: "All filings current. No state notices.", tag: "DONE" },
+        { time: "Tuesday", label: "Contract review", note: "4 active contracts reviewed. Ryan Lands renewal due Jun 30 — flagged.", tag: "FLAG" },
+        { time: "Tuesday", label: "IRS deadlines", note: "Next estimated tax payment: Sep 15. No immediate action.", tag: "FYI" },
+      ],
+    },
+  },
 ];
 
 const ACTIVITY_LOG = [
@@ -390,6 +493,7 @@ function SageChatWidget() {
 function HomeView() {
   const [calOpen, setCalOpen] = useState(false);
   const closeCalendar = useCallback(() => setCalOpen(false), []);
+  const [agentQuickView, setAgentQuickView] = useState<Agent | null>(null);
 
   return (
     <div>
@@ -576,11 +680,14 @@ function HomeView() {
         </div>
         <div className="agent-activity-grid">
           {AGENTS.map((a, i) => (
-            <div className="agent-activity-row" key={i}>
+            <div className="agent-activity-row" key={i} onClick={() => setAgentQuickView(a)} style={{ cursor: "pointer" }}>
               <div className="agent-activity-left">
                 <div className={`agent-dot dot-${a.status}`} style={{ flexShrink: 0 }} />
                 <div>
-                  <div className="agent-activity-name">{a.name} <span className="agent-activity-role">{a.role}</span></div>
+                  <div className="agent-activity-name">
+                    <span className="agent-activity-name-link">{a.name}</span>
+                    {" "}<span className="agent-activity-role">{a.role}</span>
+                  </div>
                   <div className="agent-activity-last">{a.last}</div>
                 </div>
               </div>
@@ -618,6 +725,74 @@ function HomeView() {
       </div>
 
       {calOpen && <CalendarModal onClose={closeCalendar} />}
+      {agentQuickView && <AgentQuickView agent={agentQuickView} onClose={() => setAgentQuickView(null)} />}
+    </div>
+  );
+}
+
+// ─── Agent Quick View ─────────────────────────────────────────────────────────
+const TAG_STYLES: Record<string, { bg: string; color: string; label: string }> = {
+  URGENT: { bg: "rgba(220,80,60,0.12)",   color: "#B04040", label: "Urgent" },
+  ACTION: { bg: "rgba(232,160,64,0.15)",  color: "#C47820", label: "Action" },
+  FLAG:   { bg: "rgba(232,160,64,0.15)",  color: "#C47820", label: "Flag" },
+  FYI:    { bg: "rgba(90,120,200,0.12)",  color: "#4060A0", label: "FYI" },
+  DONE:   { bg: "rgba(80,160,100,0.12)",  color: "#407840", label: "Done" },
+};
+
+function AgentQuickView({ agent, onClose }: { agent: Agent; onClose: () => void }) {
+  // Close on backdrop click
+  return (
+    <div className="aqv-overlay" onClick={onClose}>
+      <div className="aqv-panel" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="aqv-header">
+          <div className="aqv-header-left">
+            <div className={`agent-dot dot-${agent.status}`} style={{ width: 11, height: 11 }} />
+            <div>
+              <div className="aqv-name">{agent.name}</div>
+              <div className="aqv-role">{agent.role}</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span className={`agent-status-badge status-${agent.status}`}>
+              {agent.status.charAt(0).toUpperCase() + agent.status.slice(1)}
+            </span>
+            <button className="aqv-close" onClick={onClose}>✕</button>
+          </div>
+        </div>
+
+        {/* Summary */}
+        <div className="aqv-summary">{agent.report.summary}</div>
+
+        {/* Last active */}
+        <div className="aqv-last-active">Last active: {agent.last}</div>
+
+        {/* Divider */}
+        <div className="aqv-divider" />
+
+        {/* Activity items */}
+        <div className="aqv-section-label">Recent Activity</div>
+        <div className="aqv-items">
+          {agent.report.items.map((item, i) => {
+            const ts = TAG_STYLES[item.tag] ?? TAG_STYLES.FYI;
+            return (
+              <div className="aqv-item" key={i}>
+                <div className="aqv-item-top">
+                  <span className="aqv-item-label">{item.label}</span>
+                  <span className="aqv-item-tag" style={{ background: ts.bg, color: ts.color }}>{ts.label}</span>
+                </div>
+                <div className="aqv-item-note">{item.note}</div>
+                <div className="aqv-item-time">{item.time}</div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Footer */}
+        <div className="aqv-footer">
+          <span className="aqv-footer-hint">Click outside to close</span>
+        </div>
+      </div>
     </div>
   );
 }
