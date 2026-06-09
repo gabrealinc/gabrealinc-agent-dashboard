@@ -368,16 +368,9 @@ function HomeView() {
               View full calendar →
             </button>
           </div>
-
-          {/* Liala Preview */}
-          <div className="card" style={{ background: "linear-gradient(135deg, rgba(180,120,220,0.15), rgba(232,160,64,0.1))", cursor: "pointer" }}>
-            <div className="card-label" style={{ color: "#9060C0" }}>Liala · Spirit Team</div>
-            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, marginBottom: 6, letterSpacing: "-0.3px" }}>Soft Power</div>
-            <div style={{ fontSize: 13, color: "var(--text-soft)", fontStyle: "italic", lineHeight: 1.6 }}>You're in your luteal phase — the time of the wise woman. Your energy turns inward today. Finish what's already in motion.</div>
-          </div>
         </div>
 
-        {/* RIGHT — Priorities + Mac Mini */}
+        {/* RIGHT — Priorities */}
         <div>
           <div className="card">
             <div className="card-header">
@@ -388,23 +381,6 @@ function HomeView() {
               <RefreshBtn />
             </div>
             <PrioritiesPanel />
-          </div>
-
-          <div className="card">
-            <div className="card-label">Mac Mini</div>
-            <div className="card-subtitle">Remote control your agent hub</div>
-            <div className="mac-mini-btns">
-              <button className="btn-mac" onClick={() => alert("Sending Wake-on-LAN signal…\n\nConnect Tailscale + Supabase edge function to activate.")}>
-                <div className="btn-mac-icon">🌐</div>
-                <span className="btn-mac-label">Wake Mac Mini</span>
-                <div className="btn-mac-sub">Send WoL signal</div>
-              </button>
-              <button className="btn-mac" onClick={() => alert("Configure MAC_MINI_TAILSCALE_IP in Replit Secrets to enable screen share.")}>
-                <div className="btn-mac-icon">🖥</div>
-                <span className="btn-mac-label">Screen Share</span>
-                <div className="btn-mac-sub">Open remote session</div>
-              </button>
-            </div>
           </div>
         </div>
       </div>
@@ -460,6 +436,31 @@ function HomeView() {
               <button className="btn btn-dismiss">Deny ✕</button>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Full-width Liala */}
+      <div className="card" style={{ background: "linear-gradient(135deg, rgba(180,120,220,0.15), rgba(232,160,64,0.1))", cursor: "pointer" }}>
+        <div className="card-label" style={{ color: "#9060C0" }}>Liala · Spirit Team</div>
+        <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, marginBottom: 6, letterSpacing: "-0.3px" }}>Soft Power</div>
+        <div style={{ fontSize: 13, color: "var(--text-soft)", fontStyle: "italic", lineHeight: 1.6 }}>You're in your luteal phase — the time of the wise woman. Your energy turns inward today. Finish what's already in motion.</div>
+      </div>
+
+      {/* Mac Mini — bottom */}
+      <div className="card">
+        <div className="card-label">Mac Mini</div>
+        <div className="card-subtitle">Remote control your agent hub</div>
+        <div className="mac-mini-btns">
+          <button className="btn-mac" onClick={() => alert("Sending Wake-on-LAN signal…\n\nConnect Tailscale + Supabase edge function to activate.")}>
+            <div className="btn-mac-icon">🌐</div>
+            <span className="btn-mac-label">Wake Mac Mini</span>
+            <div className="btn-mac-sub">Send WoL signal</div>
+          </button>
+          <button className="btn-mac" onClick={() => alert("Configure MAC_MINI_TAILSCALE_IP in Replit Secrets to enable screen share.")}>
+            <div className="btn-mac-icon">🖥</div>
+            <span className="btn-mac-label">Screen Share</span>
+            <div className="btn-mac-sub">Open remote session</div>
+          </button>
         </div>
       </div>
 
