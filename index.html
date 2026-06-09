@@ -1,0 +1,1388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gabreal Command Center</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --grad-1: #C084E8;
+    --grad-2: #F0907A;
+    --grad-3: #F5B840;
+    --accent: #F0900A;
+    --accent-light: rgba(240,144,10,0.15);
+    --glass: rgba(255,255,255,0.55);
+    --glass-border: rgba(255,255,255,0.7);
+    --glass-strong: rgba(255,255,255,0.75);
+    --text: #1A1208;
+    --text-soft: #7A6A58;
+    --text-xsoft: #A89880;
+    --radius: 18px;
+    --radius-sm: 10px;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    background: #F5D8B0;
+    color: var(--text);
+    overflow-x: hidden;
+  }
+
+  /* Gradient background */
+  .bg-gradient {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background:
+      radial-gradient(ellipse 70% 80% at 0% 20%, rgba(192,132,232,0.7) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 70% at 50% 50%, rgba(240,144,122,0.5) 0%, transparent 60%),
+      radial-gradient(ellipse 80% 80% at 100% 10%, rgba(245,184,64,0.75) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 60% at 80% 90%, rgba(240,144,10,0.4) 0%, transparent 50%),
+      linear-gradient(135deg, #E8C0F0 0%, #F5D0B8 40%, #F8E090 100%);
+    animation: gradientShift 20s ease-in-out infinite alternate;
+  }
+
+  @keyframes gradientShift {
+    0% { filter: hue-rotate(0deg) brightness(1); }
+    50% { filter: hue-rotate(8deg) brightness(1.03); }
+    100% { filter: hue-rotate(-5deg) brightness(0.98); }
+  }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* NAV */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(255,255,255,0.45);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--glass-border);
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+  }
+
+  .nav-brand {
+    font-family: 'Playfair Display', serif;
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: -0.3px;
+  }
+
+  .nav-tabs {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .nav-tab {
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    background: transparent;
+    color: var(--text-soft);
+    letter-spacing: 0.2px;
+  }
+
+  .nav-tab:hover { background: rgba(255,255,255,0.5); color: var(--text); }
+  .nav-tab.active {
+    background: rgba(240,144,10,0.18);
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .nav-right {
+    font-size: 13px;
+    color: var(--text-soft);
+    font-weight: 400;
+  }
+
+  /* MAIN */
+  main {
+    flex: 1;
+    max-width: 1360px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 32px 32px 60px;
+  }
+
+  .page-header {
+    margin-bottom: 28px;
+  }
+
+  .page-header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 32px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: -0.5px;
+  }
+
+  .page-date {
+    font-size: 13px;
+    color: var(--text-soft);
+    margin-top: 2px;
+  }
+
+  /* GLASS CARD */
+  .card {
+    background: var(--glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    padding: 22px 24px;
+    box-shadow: 0 2px 20px rgba(160,100,40,0.08);
+  }
+
+  .card-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+
+  .card-subtitle {
+    font-size: 12px;
+    color: var(--text-xsoft);
+    margin-bottom: 16px;
+  }
+
+  /* GRID LAYOUTS */
+  .home-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  .home-col { display: flex; flex-direction: column; gap: 20px; }
+
+  /* SCHEDULE */
+  .schedule-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(160,100,40,0.08);
+    gap: 20px;
+  }
+  .schedule-item:last-child { border-bottom: none; }
+  .schedule-time { font-size: 13px; color: var(--text-soft); min-width: 72px; }
+  .schedule-name { font-size: 14px; font-weight: 500; color: var(--text); }
+
+  .card-footer-link {
+    display: block;
+    text-align: right;
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 500;
+    margin-top: 14px;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  /* PRIORITIES */
+  .task-row {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(160,100,40,0.08);
+    gap: 12px;
+  }
+  .task-row:last-child { border-bottom: none; }
+
+  .task-check {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    border: 2px solid rgba(160,100,40,0.25);
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .task-check:hover { border-color: var(--accent); background: var(--accent-light); }
+
+  .task-name { font-size: 14px; flex: 1; }
+  .task-date { font-size: 12px; color: var(--text-xsoft); }
+
+  .pill {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    cursor: pointer;
+  }
+  .pill-todo { background: rgba(240,144,10,0.12); color: var(--accent); }
+  .pill-progress { background: rgba(130,90,200,0.12); color: #8050B0; }
+  .pill-done { background: rgba(80,160,100,0.12); color: #407840; }
+
+  /* NEEDS ATTENTION */
+  .filter-pills {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .filter-pill {
+    font-size: 12px;
+    padding: 5px 14px;
+    border-radius: 20px;
+    border: 1px solid rgba(160,100,40,0.15);
+    background: rgba(255,255,255,0.5);
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--text-soft);
+    transition: all 0.2s;
+  }
+  .filter-pill.active {
+    background: rgba(240,144,10,0.15);
+    border-color: rgba(240,144,10,0.3);
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .attention-card {
+    background: rgba(255,255,255,0.65);
+    border: 1px solid rgba(255,255,255,0.8);
+    border-radius: var(--radius-sm);
+    padding: 16px 18px;
+    margin-bottom: 12px;
+  }
+
+  .attention-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+
+  .badge-priority {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    letter-spacing: 0.5px;
+  }
+  .badge-high { background: rgba(220,60,60,0.12); color: #B04040; }
+  .badge-medium { background: rgba(240,144,10,0.12); color: var(--accent); }
+  .badge-low { background: rgba(100,160,100,0.12); color: #508050; }
+
+  .badge-source {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: rgba(160,100,40,0.1);
+    color: var(--text-soft);
+    font-weight: 500;
+  }
+
+  .badge-client {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: rgba(130,90,200,0.1);
+    color: #7050A0;
+    font-weight: 500;
+  }
+
+  .attention-time { font-size: 11px; color: var(--text-xsoft); margin-left: auto; }
+
+  .attention-summary { font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+  .attention-why { font-size: 12px; color: var(--text-soft); margin-bottom: 12px; }
+
+  .draft-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 6px;
+  }
+
+  .draft-textarea {
+    width: 100%;
+    background: rgba(255,255,255,0.6);
+    border: 1px solid rgba(160,100,40,0.15);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    color: var(--text);
+    resize: none;
+    min-height: 70px;
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+  .draft-textarea:focus { outline: none; border-color: rgba(240,144,10,0.4); }
+
+  .action-btns {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 18px;
+    border-radius: 20px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .btn-approve {
+    background: rgba(80,160,100,0.15);
+    color: #407840;
+    border: 1px solid rgba(80,160,100,0.25);
+  }
+  .btn-approve:hover { background: rgba(80,160,100,0.25); }
+
+  .btn-send {
+    background: rgba(240,144,10,0.15);
+    color: var(--accent);
+    border: 1px solid rgba(240,144,10,0.3);
+  }
+  .btn-send:hover { background: rgba(240,144,10,0.25); }
+
+  .btn-deny {
+    background: rgba(220,60,60,0.08);
+    color: #B04040;
+    border: 1px solid rgba(220,60,60,0.15);
+  }
+  .btn-deny:hover { background: rgba(220,60,60,0.15); }
+
+  .btn-dismiss {
+    background: transparent;
+    color: var(--text-xsoft);
+    border: 1px solid rgba(160,100,40,0.15);
+  }
+  .btn-dismiss:hover { background: rgba(160,100,40,0.06); }
+
+  /* empty state */
+  .empty-state {
+    text-align: center;
+    padding: 32px 20px;
+    color: var(--text-xsoft);
+    font-size: 14px;
+    font-style: italic;
+  }
+
+  /* SAGE CHAT */
+  .sage-chat {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .chat-messages {
+    min-height: 80px;
+    max-height: 180px;
+    overflow-y: auto;
+    margin-bottom: 12px;
+  }
+
+  .chat-msg {
+    font-size: 14px;
+    line-height: 1.6;
+    padding: 8px 12px;
+    border-radius: 10px;
+    margin-bottom: 8px;
+  }
+  .chat-msg.sage {
+    background: rgba(240,144,10,0.1);
+    color: var(--text);
+    border-left: 3px solid var(--accent);
+  }
+
+  .chat-input-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .chat-input {
+    flex: 1;
+    background: rgba(255,255,255,0.6);
+    border: 1px solid rgba(160,100,40,0.15);
+    border-radius: 20px;
+    padding: 10px 18px;
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    color: var(--text);
+  }
+  .chat-input:focus { outline: none; border-color: rgba(240,144,10,0.4); }
+  .chat-input::placeholder { color: var(--text-xsoft); }
+
+  .btn-send-chat {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 10px 22px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+  }
+  .btn-send-chat:hover { background: #D07800; }
+
+  .powered-by {
+    font-size: 11px;
+    color: var(--text-xsoft);
+    margin-top: 10px;
+  }
+
+  /* MAC MINI CONTROLS */
+  .mac-mini-card {
+    background: linear-gradient(135deg, rgba(192,132,232,0.25), rgba(240,144,10,0.2));
+    border: 1px solid rgba(255,255,255,0.7);
+  }
+
+  .mac-mini-btns {
+    display: flex;
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .btn-wake {
+    flex: 1;
+    background: rgba(255,255,255,0.6);
+    border: 1px solid rgba(255,255,255,0.8);
+    border-radius: 12px;
+    padding: 14px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Inter', sans-serif;
+  }
+  .btn-wake:hover { background: rgba(255,255,255,0.8); transform: translateY(-1px); }
+
+  .btn-wake-icon { font-size: 22px; margin-bottom: 4px; }
+  .btn-wake-label { font-size: 13px; font-weight: 600; color: var(--text); }
+  .btn-wake-sub { font-size: 11px; color: var(--text-soft); margin-top: 2px; }
+
+  /* VIEWS */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* AGENTS VIEW */
+  .agents-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 20px;
+  }
+
+  .agent-card {
+    background: var(--glass);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    padding: 20px 22px;
+  }
+
+  .agent-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .agent-name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .agent-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .dot-active { background: #60C070; box-shadow: 0 0 6px rgba(80,180,80,0.5); }
+  .dot-scheduled { background: #E8C040; box-shadow: 0 0 6px rgba(200,160,20,0.4); }
+  .dot-idle { background: #C0B0A0; }
+
+  .agent-name { font-size: 15px; font-weight: 600; color: var(--text); }
+  .agent-role { font-size: 12px; color: var(--text-soft); }
+
+  .agent-status-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 10px;
+  }
+  .status-active { background: rgba(80,180,80,0.12); color: #408050; }
+  .status-scheduled { background: rgba(200,160,20,0.12); color: #806010; }
+  .status-idle { background: rgba(160,140,120,0.12); color: #706050; }
+
+  .agent-desc {
+    font-size: 13px;
+    color: var(--text-soft);
+    line-height: 1.5;
+    margin-bottom: 10px;
+  }
+
+  .agent-last { font-size: 12px; color: var(--text-xsoft); }
+
+  /* FINANCE VIEW */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .stat-card {
+    background: var(--glass);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    padding: 22px 24px;
+  }
+
+  .stat-label { font-size: 12px; color: var(--text-soft); font-weight: 500; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-value { font-size: 32px; font-weight: 700; color: var(--text); letter-spacing: -1px; }
+  .stat-sub { font-size: 12px; color: var(--text-xsoft); margin-top: 4px; }
+
+  /* CHART */
+  .chart-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    height: 120px;
+    padding: 0 4px;
+    margin-bottom: 8px;
+  }
+
+  .chart-bar-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    height: 100%;
+    justify-content: flex-end;
+  }
+
+  .chart-bar-value { font-size: 11px; font-weight: 600; color: var(--text-soft); }
+
+  .chart-bar {
+    width: 100%;
+    background: linear-gradient(180deg, rgba(240,144,10,0.9), rgba(245,184,64,0.7));
+    border-radius: 6px 6px 0 0;
+    transition: opacity 0.2s;
+    cursor: pointer;
+  }
+  .chart-bar:hover { opacity: 0.8; }
+
+  .chart-month { font-size: 11px; color: var(--text-xsoft); }
+
+  /* TABLE */
+  .data-table { width: 100%; border-collapse: collapse; }
+  .data-table th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-xsoft);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(160,100,40,0.1);
+  }
+  .data-table td {
+    padding: 12px 12px;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(160,100,40,0.06);
+    vertical-align: middle;
+  }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: rgba(255,255,255,0.3); }
+
+  .invoice-amount { font-weight: 600; font-size: 14px; }
+  .status-paid { background: rgba(80,160,100,0.12); color: #407840; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 10px; }
+  .status-pending { background: rgba(240,144,10,0.12); color: var(--accent); font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 10px; }
+  .status-overdue { background: rgba(220,60,60,0.12); color: #B04040; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 10px; }
+
+  /* SPIRIT VIEW */
+  .spirit-hero {
+    background: linear-gradient(135deg, rgba(192,132,232,0.3), rgba(240,144,10,0.2));
+    border: 1px solid rgba(255,255,255,0.7);
+    border-radius: var(--radius);
+    padding: 40px 40px;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  .cycle-phase {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(130,80,180,0.8);
+    margin-bottom: 10px;
+  }
+
+  .cycle-theme {
+    font-family: 'Playfair Display', serif;
+    font-size: 44px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: -1px;
+    margin-bottom: 16px;
+  }
+
+  .cycle-desc {
+    font-size: 15px;
+    color: var(--text-soft);
+    line-height: 1.7;
+    max-width: 580px;
+    margin: 0 auto 20px;
+    font-style: italic;
+  }
+
+  .intention {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    color: var(--accent);
+    font-style: italic;
+    margin-top: 20px;
+  }
+
+  .spirit-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  /* INTELLIGENCE VIEW */
+  .intel-section { margin-bottom: 24px; }
+  .intel-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(240,144,10,0.15);
+  }
+
+  .intel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .intel-card {
+    background: var(--glass);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    padding: 16px 18px;
+  }
+
+  .intel-source {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-xsoft);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: rgba(160,100,40,0.08);
+    padding: 2px 8px;
+    border-radius: 8px;
+    display: inline-block;
+    margin-bottom: 8px;
+  }
+  .intel-headline { font-size: 14px; font-weight: 600; margin-bottom: 6px; line-height: 1.4; }
+  .intel-summary { font-size: 12px; color: var(--text-soft); line-height: 1.5; }
+  .intel-date { font-size: 11px; color: var(--text-xsoft); margin-top: 8px; }
+
+  /* REFRESH BTN */
+  .refresh-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-xsoft);
+    font-size: 14px;
+    padding: 2px;
+    transition: transform 0.3s;
+  }
+  .refresh-btn:hover { transform: rotate(180deg); color: var(--accent); }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(160,100,40,0.2); border-radius: 3px; }
+
+  @media (max-width: 900px) {
+    .home-grid, .agents-grid, .spirit-grid, .intel-grid { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: 1fr; }
+    nav { padding: 0 16px; }
+    .nav-tabs { gap: 0; }
+    .nav-tab { padding: 6px 10px; font-size: 12px; }
+    main { padding: 20px 16px 40px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-gradient"></div>
+
+<div class="app">
+  <nav>
+    <div class="nav-brand">Gabreal Command Center</div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="showView('home', this)">Home</button>
+      <button class="nav-tab" onclick="showView('clients', this)">Clients</button>
+      <button class="nav-tab" onclick="showView('finance', this)">Finance</button>
+      <button class="nav-tab" onclick="showView('intelligence', this)">Intelligence</button>
+      <button class="nav-tab" onclick="showView('substack', this)">Substack</button>
+      <button class="nav-tab" onclick="showView('spirit', this)">Spirit</button>
+      <button class="nav-tab" onclick="showView('agents', this)">Agents</button>
+    </div>
+    <div class="nav-right" id="navDate"></div>
+  </nav>
+
+  <main>
+
+    <!-- HOME -->
+    <div class="view active" id="view-home">
+      <div class="page-header">
+        <h1 id="greeting">Good morning, Gabby.</h1>
+      </div>
+
+      <div class="home-grid">
+        <!-- LEFT COLUMN -->
+        <div class="home-col">
+
+          <!-- Schedule -->
+          <div class="card">
+            <div class="section-header">
+              <div>
+                <div class="card-label">Today's Schedule</div>
+              </div>
+              <button class="refresh-btn" title="Refresh">↻</button>
+            </div>
+            <div class="schedule-item"><span class="schedule-time">6:00 AM</span><span class="schedule-name">Morning Routine</span></div>
+            <div class="schedule-item"><span class="schedule-time">10:00 AM</span><span class="schedule-name">LACES Strategy Call</span></div>
+            <div class="schedule-item"><span class="schedule-time">2:30 PM</span><span class="schedule-name">Ryan Lands</span></div>
+            <div class="schedule-item"><span class="schedule-time">4:00 PM</span><span class="schedule-name">Luna Vita Check-in</span></div>
+            <a class="card-footer-link">View full calendar →</a>
+          </div>
+
+          <!-- Needs Attention -->
+          <div class="card">
+            <div class="section-header">
+              <div>
+                <div class="card-label">Needs Your Attention</div>
+                <div class="card-subtitle">Proposals from Amber</div>
+              </div>
+              <button class="refresh-btn" title="Refresh">↻</button>
+            </div>
+            <div class="filter-pills">
+              <button class="filter-pill active">All (3)</button>
+              <button class="filter-pill">Urgent (1)</button>
+              <button class="filter-pill">Action (2)</button>
+              <button class="filter-pill">Gmail (2)</button>
+              <button class="filter-pill">Slack (1)</button>
+            </div>
+
+            <!-- Item 1 -->
+            <div class="attention-card">
+              <div class="attention-meta">
+                <span class="badge-priority badge-high">HIGH</span>
+                <span class="badge-source">Gmail</span>
+                <span class="badge-client">Luna Vita</span>
+                <span class="attention-time">2 hours ago</span>
+              </div>
+              <div class="attention-summary">Kea replied asking about the brand deck timeline</div>
+              <div class="attention-why">Active deliverable in progress — client is waiting on your response</div>
+              <div class="draft-label">Draft Reply</div>
+              <textarea class="draft-textarea">Hey Kea! The brand deck is coming together beautifully. I'm targeting end of day Friday to send over the first full draft. Want to set up a quick 20-minute review call for next Monday? Let me know what works!</textarea>
+              <div class="action-btns">
+                <button class="btn btn-send">Send ✓</button>
+                <button class="btn btn-approve">Edit + Send ✎</button>
+                <button class="btn btn-dismiss">Dismiss</button>
+              </div>
+            </div>
+
+            <!-- Item 2 (Task Proposal) -->
+            <div class="attention-card">
+              <div class="attention-meta">
+                <span class="badge-priority badge-medium">TASK</span>
+                <span class="badge-source">Meeting Notes</span>
+                <span class="badge-client">LACES</span>
+                <span class="attention-time">yesterday</span>
+              </div>
+              <div class="attention-summary">Send updated Klaviyo flow proposal to Jeff by Thursday</div>
+              <div class="attention-why">From LACES strategy call — Jeff expecting follow-up this week</div>
+              <div class="action-btns">
+                <button class="btn btn-approve">Approve ✓</button>
+                <button class="btn btn-send">Edit + Approve ✎</button>
+                <button class="btn btn-deny">Deny ✕</button>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Sage Chat -->
+          <div class="card">
+            <div class="card-label">Sage</div>
+            <div class="card-subtitle">Ready to help.</div>
+            <div class="sage-chat">
+              <div class="chat-messages" id="chatMessages">
+                <div class="chat-msg sage">Good morning! You have 4 meetings today and 3 items in your queue. Your highest priority is the Luna Vita reply — Kea has been waiting since this morning. After that, the LACES Klaviyo proposal is due Thursday.</div>
+              </div>
+              <div class="chat-input-row">
+                <input class="chat-input" type="text" id="chatInput" placeholder="Ask Sage anything..." onkeydown="if(event.key==='Enter')sendChat()">
+                <button class="btn-send-chat" onclick="sendChat()">Send</button>
+              </div>
+              <div class="powered-by">Powered by Claude via Supabase</div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN -->
+        <div class="home-col">
+
+          <!-- Today's Priorities -->
+          <div class="card">
+            <div class="section-header">
+              <div>
+                <div class="card-label">Today's Priorities</div>
+                <div class="card-subtitle">synced at 9:34 AM</div>
+              </div>
+              <button class="refresh-btn">↻</button>
+            </div>
+            <div class="task-row">
+              <div class="task-check"></div>
+              <div class="task-name">Add Favicon to Luxx Site</div>
+              <div class="task-date">Jun 4</div>
+              <span class="pill pill-todo">To Do</span>
+            </div>
+            <div class="task-row">
+              <div class="task-check"></div>
+              <div class="task-name">Send Issa Dashboard</div>
+              <div class="task-date">Jun 4</div>
+              <span class="pill pill-todo">To Do</span>
+            </div>
+            <div class="task-row">
+              <div class="task-check"></div>
+              <div class="task-name">Luna Vita Brand Deck</div>
+              <div class="task-date">Jun 4</div>
+              <span class="pill pill-progress">In Progress</span>
+            </div>
+            <div class="task-row">
+              <div class="task-check"></div>
+              <div class="task-name">LACES Klaviyo Flow</div>
+              <div class="task-date">Jun 6</div>
+              <span class="pill pill-progress">In Progress</span>
+            </div>
+            <div class="task-row">
+              <div class="task-check"></div>
+              <div class="task-name">Create Labels for All Products</div>
+              <div class="task-date">Jun 11</div>
+              <span class="pill pill-todo">To Do</span>
+            </div>
+          </div>
+
+          <!-- Mac Mini Controls -->
+          <div class="card mac-mini-card">
+            <div class="card-label">Mac Mini</div>
+            <div class="card-subtitle">Remote control your agent hub</div>
+            <div class="mac-mini-btns">
+              <button class="btn-wake" onclick="wakeMacMini()">
+                <div class="btn-wake-icon">🌐</div>
+                <div class="btn-wake-label">Wake Mac Mini</div>
+                <div class="btn-wake-sub">Send WoL signal</div>
+              </button>
+              <button class="btn-wake" onclick="openScreenShare()">
+                <div class="btn-wake-icon">🖥</div>
+                <div class="btn-wake-label">Screen Share</div>
+                <div class="btn-wake-sub">Open remote session</div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Liala Spirit Preview -->
+          <div class="card" style="background: linear-gradient(135deg, rgba(192,132,232,0.25), rgba(240,144,10,0.15)); cursor: pointer;" onclick="showView('spirit', document.querySelector('[onclick*=spirit]'))">
+            <div class="card-label" style="color: #9060C0;">Liala · Spirit Team</div>
+            <div style="font-family: 'Playfair Display', serif; font-size: 22px; margin: 8px 0 6px; letter-spacing: -0.3px;">Soft Power</div>
+            <div style="font-size: 13px; color: var(--text-soft); font-style: italic; line-height: 1.6;">You're in your luteal phase — the time of the wise woman. Your energy turns inward today. Finish what's already in motion.</div>
+            <div style="font-size: 12px; color: #9060C0; margin-top: 12px; font-weight: 500;">View today's full ritual →</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- FINANCE -->
+    <div class="view" id="view-finance">
+      <div class="page-header">
+        <h1>Finance</h1>
+        <div class="page-date">Gab Real Inc · Gabrielle Greenberg</div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">Revenue YTD</div>
+          <div class="stat-value">$40,390</div>
+          <div class="stat-sub">Paid invoices from GoHighLevel</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Outstanding Invoices</div>
+          <div class="stat-value">$5,939</div>
+          <div class="stat-sub">Unpaid balance across all invoices</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Invoices on File</div>
+          <div class="stat-value">29</div>
+          <div class="stat-sub">Total in GoHighLevel</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom: 16px;">
+        <div class="card-label">Monthly Revenue (Paid)</div>
+        <div class="chart-bars" style="margin-top: 16px;">
+          <div class="chart-bar-col">
+            <div class="chart-bar-value">$5.4k</div>
+            <div class="chart-bar" style="height: 46%;"></div>
+            <div class="chart-month">Jan</div>
+          </div>
+          <div class="chart-bar-col">
+            <div class="chart-bar-value">$8.5k</div>
+            <div class="chart-bar" style="height: 72%;"></div>
+            <div class="chart-month">Feb</div>
+          </div>
+          <div class="chart-bar-col">
+            <div class="chart-bar-value">$6.0k</div>
+            <div class="chart-bar" style="height: 51%;"></div>
+            <div class="chart-month">Mar</div>
+          </div>
+          <div class="chart-bar-col">
+            <div class="chart-bar-value">$9.5k</div>
+            <div class="chart-bar" style="height: 81%;"></div>
+            <div class="chart-month">Apr</div>
+          </div>
+          <div class="chart-bar-col">
+            <div class="chart-bar-value">$10.9k</div>
+            <div class="chart-bar" style="height: 93%;"></div>
+            <div class="chart-month">May</div>
+          </div>
+          <div class="chart-bar-col">
+            <div class="chart-bar-value">$0.2k</div>
+            <div class="chart-bar" style="height: 4%; background: rgba(160,100,40,0.2);"></div>
+            <div class="chart-month">Jun</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-header" style="margin-bottom: 16px;">
+          <div class="card-label">Invoices</div>
+          <button class="filter-pill">Year to date</button>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Client</th>
+              <th>Description</th>
+              <th>Amount</th>
+              <th>Date</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Aissia Cruz</td><td>Luxx Flyers June</td><td class="invoice-amount">$150</td><td>Jun 1</td><td><span class="status-paid">Paid</span></td></tr>
+            <tr><td>Jeff Chu</td><td>Monthly Email Marketing Retainer</td><td class="invoice-amount">$5,000</td><td>May 31</td><td><span class="status-pending">Pending</span></td></tr>
+            <tr><td>Kea Kiehl</td><td>Spirit Oasis Merge to GHL</td><td class="invoice-amount">$2,750</td><td>May 27</td><td><span class="status-paid">Paid</span></td></tr>
+            <tr><td>Rise Collective</td><td>Rise Collective AI Workshop</td><td class="invoice-amount">$2,500</td><td>May 20</td><td><span class="status-paid">Paid</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- INTELLIGENCE -->
+    <div class="view" id="view-intelligence">
+      <div class="page-header">
+        <h1>Intelligence</h1>
+        <div class="page-date">AI-curated updates, industry signals, and opportunities · from Nancy</div>
+      </div>
+
+      <div class="intel-section">
+        <div class="intel-section-title">AI & Automation</div>
+        <div class="intel-grid">
+          <div class="intel-card">
+            <div class="intel-source">The Neuron</div>
+            <div class="intel-headline">Claude 4 benchmarks and what they mean for agents</div>
+            <div class="intel-summary">A breakdown of the new benchmarks and how they translate to agent reliability in production.</div>
+            <div class="intel-date">May 21</div>
+          </div>
+          <div class="intel-card">
+            <div class="intel-source">Superhuman AI</div>
+            <div class="intel-headline">RAG vs fine-tuning: when to use which</div>
+            <div class="intel-summary">A practical decision framework for choosing retrieval over fine-tuning in real product workflows.</div>
+            <div class="intel-date">May 20</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="intel-section">
+        <div class="intel-section-title">Markets & Economy</div>
+        <div class="intel-grid">
+          <div class="intel-card">
+            <div class="intel-source">Business Insider</div>
+            <div class="intel-headline">Freelance economy grows 20% as AI tools lower barriers</div>
+            <div class="intel-summary">New data shows independent operators are capturing more enterprise spend — direct opportunity for Gab Real Inc positioning.</div>
+            <div class="intel-date">May 21</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUBSTACK -->
+    <div class="view" id="view-substack">
+      <div class="page-header">
+        <h1>Substack</h1>
+        <div class="page-date">Write, edit, and publish your newsletter.</div>
+      </div>
+      <div class="card">
+        <div style="display: flex; gap: 20px;">
+          <div style="width: 280px; flex-shrink: 0; border-right: 1px solid rgba(160,100,40,0.1); padding-right: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <div class="card-label">Your Posts</div>
+              <button class="btn btn-send" style="padding: 6px 14px; font-size: 12px;">+ New</button>
+            </div>
+            <div class="filter-pills" style="flex-wrap: wrap; gap: 6px; margin-bottom: 12px;">
+              <button class="filter-pill active" style="font-size: 11px; padding: 3px 10px;">All (74)</button>
+              <button class="filter-pill" style="font-size: 11px; padding: 3px 10px;">In Progress (21)</button>
+              <button class="filter-pill" style="font-size: 11px; padding: 3px 10px;">To Do (29)</button>
+            </div>
+            <div style="cursor: pointer; padding: 10px 0; border-bottom: 1px solid rgba(160,100,40,0.06);">
+              <div style="font-size: 13px; font-weight: 600; margin-bottom: 4px;">please don't try to fix me</div>
+              <span class="pill pill-progress" style="font-size: 10px; padding: 2px 8px;">Ready to Schedule</span>
+              <span style="font-size: 11px; color: var(--text-xsoft); margin-left: 8px;">Jun 3</span>
+            </div>
+            <div style="cursor: pointer; padding: 10px 0; border-bottom: 1px solid rgba(160,100,40,0.06);">
+              <div style="font-size: 13px; margin-bottom: 4px;">i hate to admit this</div>
+              <span class="pill pill-todo" style="font-size: 10px; padding: 2px 8px;">To Do</span>
+              <span style="font-size: 11px; color: var(--text-xsoft); margin-left: 8px;">Jun 2</span>
+            </div>
+          </div>
+          <div style="flex: 1;">
+            <div style="font-size: 22px; font-weight: 600; margin-bottom: 6px;">please don't try to fix me</div>
+            <div style="font-size: 14px; color: var(--text-soft); margin-bottom: 20px;">on unsolicited advice, lived experience, and the difference between fixing someone and supporting them</div>
+            <div style="font-size: 14px; line-height: 1.8; color: var(--text);">
+              <p style="margin-bottom: 14px;">I went on a date recently with someone I've known for years.</p>
+              <p style="margin-bottom: 14px;">I try not to lead with anxiety on a first date, but this one was different. We were catching up, going deep, actually getting into the real stuff. So it came up.</p>
+              <p style="margin-bottom: 14px;">And when it did, he offered a solution. Medication.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SPIRIT -->
+    <div class="view" id="view-spirit">
+      <div class="page-header">
+        <h1>Good morning, Gabby.</h1>
+        <div class="page-date">Liala · Your Spirit Team · <span style="color: #9060C0;">Day 22 · Luteal Phase</span> &nbsp;·&nbsp; <a style="color: var(--accent); cursor: pointer; font-size: 13px;">Update cycle start date</a></div>
+      </div>
+
+      <div class="spirit-hero card">
+        <div class="cycle-phase">Luteal Phase · Day 22 of 28</div>
+        <div class="cycle-theme">Soft Power</div>
+        <div class="cycle-desc">You're in the time of the wise woman — the editor, the one who knows what to keep and what to release. Your energy turns inward today. This is not the time to push harder. It's the time to finish what's already in motion and let your body lead.</div>
+        <div class="intention">"Today I move with the rhythm of my body, not against it."</div>
+      </div>
+
+      <div class="spirit-grid">
+        <div class="card">
+          <div class="card-label" style="color: #9060C0;">Meals Today</div>
+          <div style="font-size: 14px; line-height: 1.7; color: var(--text-soft);">
+            <p style="margin-bottom: 10px;">🍠 <strong style="color: var(--text);">Complex carbs + magnesium</strong> — your blood sugar stability is the key to mood today.</p>
+            <p style="margin-bottom: 10px;">Oat bowl with banana and almond butter to start. Sweet potato or lentil soup for lunch. Dark chocolate is actually good for you right now.</p>
+            <p>Avoid caffeine after noon — it amplifies PMS symptoms during late luteal.</p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-label" style="color: #9060C0;">Movement</div>
+          <div style="font-size: 14px; line-height: 1.7; color: var(--text-soft);">
+            <p style="margin-bottom: 10px;">🧘 <strong style="color: var(--text);">Restorative yoga or a long walk</strong> — your body is asking for gentleness today, especially with a full meeting schedule.</p>
+            <p>Anything high-intensity will amplify cortisol. Save that energy for your ovulatory phase next week.</p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-label" style="color: #9060C0;">Nervous System</div>
+          <div style="font-size: 14px; line-height: 1.7; color: var(--text-soft);">
+            <p style="margin-bottom: 10px;">Before your first call today: <strong style="color: var(--text);">5 rounds of box breathing</strong> (inhale 4, hold 4, exhale 4, hold 4).</p>
+            <p>Your cortisol is naturally elevated right now. This activates your parasympathetic system and grounds you before you need to be on.</p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-label" style="color: #9060C0;">Spiritual Practice</div>
+          <div style="font-size: 14px; line-height: 1.7; color: var(--text-soft); font-style: italic;">
+            <p style="margin-bottom: 10px;">"This is the time your body asks for truth. What are you ready to release that no longer serves your highest vision?"</p>
+            <p>Write it down before you start working. You don't have to share it. You just have to name it.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AGENTS -->
+    <div class="view" id="view-agents">
+      <div class="page-header">
+        <h1>Agents</h1>
+        <div class="page-date">Your multi-agent operating system</div>
+      </div>
+
+      <div class="agents-grid">
+        <div class="agent-card">
+          <div class="agent-header">
+            <div class="agent-name-row">
+              <div class="agent-dot dot-active"></div>
+              <div>
+                <div class="agent-name">Amber</div>
+                <div class="agent-role">Communication Manager</div>
+              </div>
+            </div>
+            <span class="agent-status-badge status-active">Active</span>
+          </div>
+          <div class="agent-desc">Monitors Gmail, Slack, and WhatsApp. Classifies, drafts replies, and executes approved dashboard actions.</div>
+          <div class="agent-last">Last active: 12 minutes ago · 4 items processed</div>
+        </div>
+        <div class="agent-card">
+          <div class="agent-header">
+            <div class="agent-name-row">
+              <div class="agent-dot dot-active"></div>
+              <div>
+                <div class="agent-name">Mae</div>
+                <div class="agent-role">System Librarian</div>
+              </div>
+            </div>
+            <span class="agent-status-badge status-active">Active</span>
+          </div>
+          <div class="agent-desc">Audits Notion, cleans stale data, syncs file structure, ensures everything other agents read is accurate and current.</div>
+          <div class="agent-last">Last active: 45 minutes ago · All systems nominal</div>
+        </div>
+        <div class="agent-card">
+          <div class="agent-header">
+            <div class="agent-name-row">
+              <div class="agent-dot dot-active"></div>
+              <div>
+                <div class="agent-name">Liala</div>
+                <div class="agent-role">Spirit Team</div>
+              </div>
+            </div>
+            <span class="agent-status-badge status-active">Active</span>
+          </div>
+          <div class="agent-desc">Daily morning ritual — cycle phase guidance, meals, movement, nervous system support, and spiritual practice.</div>
+          <div class="agent-last">Last active: 7:00 AM · Day 22 Luteal</div>
+        </div>
+        <div class="agent-card">
+          <div class="agent-header">
+            <div class="agent-name-row">
+              <div class="agent-dot dot-active"></div>
+              <div>
+                <div class="agent-name">Nancy</div>
+                <div class="agent-role">Research Analyst</div>
+              </div>
+            </div>
+            <span class="agent-status-badge status-scheduled">Scheduled</span>
+          </div>
+          <div class="agent-desc">Monitors client industries, AI developments, market trends, and business opportunities. Posts daily intelligence brief.</div>
+          <div class="agent-last">Last active: 7:30 AM · 3 items surfaced</div>
+        </div>
+        <div class="agent-card">
+          <div class="agent-header">
+            <div class="agent-name-row">
+              <div class="agent-dot dot-scheduled"></div>
+              <div>
+                <div class="agent-name">Milli</div>
+                <div class="agent-role">Finance Watchdog</div>
+              </div>
+            </div>
+            <span class="agent-status-badge status-scheduled">Scheduled</span>
+          </div>
+          <div class="agent-desc">QuickBooks, Gusto, GHL, Stripe — monitors business and personal finances, flags overdue invoices and tax deadlines.</div>
+          <div class="agent-last">Last active: 7:45 AM · 1 flag: $5,000 pending</div>
+        </div>
+        <div class="agent-card">
+          <div class="agent-header">
+            <div class="agent-name-row">
+              <div class="agent-dot dot-scheduled"></div>
+              <div>
+                <div class="agent-name">Sage</div>
+                <div class="agent-role">Executive Partner</div>
+              </div>
+            </div>
+            <span class="agent-status-badge status-active">Active</span>
+          </div>
+          <div class="agent-desc">Morning standup, daily priorities, opportunity scan. Reads all other agent reports and delivers your 8am brief to Slack.</div>
+          <div class="agent-last">Last active: 8:02 AM · Brief delivered to Slack</div>
+        </div>
+        <div class="agent-card">
+          <div class="agent-header">
+            <div class="agent-name-row">
+              <div class="agent-dot dot-idle"></div>
+              <div>
+                <div class="agent-name">Milton</div>
+                <div class="agent-role">Meeting Intelligence</div>
+              </div>
+            </div>
+            <span class="agent-status-badge status-idle">Idle</span>
+          </div>
+          <div class="agent-desc">Pulls from Granola, processes meeting transcripts, extracts action items, and proposes tasks to dashboard at 5pm.</div>
+          <div class="agent-last">Last active: yesterday 5:02 PM · 3 tasks proposed</div>
+        </div>
+        <div class="agent-card">
+          <div class="agent-header">
+            <div class="agent-name-row">
+              <div class="agent-dot dot-idle"></div>
+              <div>
+                <div class="agent-name">Lennard</div>
+                <div class="agent-role">Legal / HR</div>
+              </div>
+            </div>
+            <span class="agent-status-badge status-idle">Idle</span>
+          </div>
+          <div class="agent-desc">Weekly legal, tax, and HR compliance check — CA filings, payroll, contracts, IRS deadlines. Runs Tuesdays.</div>
+          <div class="agent-last">Last active: Tuesday · All clear</div>
+        </div>
+      </div>
+
+      <!-- Mac Mini Controls -->
+      <div class="card mac-mini-card" style="margin-top: 20px;">
+        <div class="card-label">Mac Mini · Remote Control</div>
+        <div class="card-subtitle">Wake and access your agent hub from anywhere</div>
+        <div class="mac-mini-btns">
+          <button class="btn-wake" onclick="wakeMacMini()">
+            <div class="btn-wake-icon">🌐</div>
+            <div class="btn-wake-label">Wake Mac Mini</div>
+            <div class="btn-wake-sub">Send WoL magic packet via Tailscale</div>
+          </button>
+          <button class="btn-wake" onclick="openScreenShare()">
+            <div class="btn-wake-icon">🖥</div>
+            <div class="btn-wake-label">Open Screen Share</div>
+            <div class="btn-wake-sub">Remote session via Tailscale</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Activity Log -->
+      <div class="card" style="margin-top: 16px;">
+        <div class="card-label">Agent Activity</div>
+        <div style="margin-top: 12px;">
+          <div style="display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(160,100,40,0.08); font-size: 13px; align-items: center;">
+            <span style="color: var(--text-xsoft); min-width: 70px;">8:02 AM</span>
+            <span style="width: 8px; height: 8px; background: #60C070; border-radius: 50%; flex-shrink: 0;"></span>
+            <span><strong>Sage</strong> — Morning brief delivered to Slack · 4 meetings, 3 priority tasks, 1 opportunity flagged</span>
+          </div>
+          <div style="display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(160,100,40,0.08); font-size: 13px; align-items: center;">
+            <span style="color: var(--text-xsoft); min-width: 70px;">7:45 AM</span>
+            <span style="width: 8px; height: 8px; background: #E8C040; border-radius: 50%; flex-shrink: 0;"></span>
+            <span><strong>Milli</strong> — Finance check complete · $5,000 LACES invoice pending 4 days, flagged to dashboard</span>
+          </div>
+          <div style="display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(160,100,40,0.08); font-size: 13px; align-items: center;">
+            <span style="color: var(--text-xsoft); min-width: 70px;">7:30 AM</span>
+            <span style="width: 8px; height: 8px; background: #60C070; border-radius: 50%; flex-shrink: 0;"></span>
+            <span><strong>Nancy</strong> — Intelligence brief ready · 3 items surfaced, 1 opportunity flagged</span>
+          </div>
+          <div style="display: flex; gap: 12px; padding: 10px 0; font-size: 13px; align-items: center;">
+            <span style="color: var(--text-xsoft); min-width: 70px;">6:45 AM</span>
+            <span style="width: 8px; height: 8px; background: #60C070; border-radius: 50%; flex-shrink: 0;"></span>
+            <span><strong>Mae</strong> — Morning audit complete · All systems nominal, no issues found</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- CLIENTS placeholder -->
+    <div class="view" id="view-clients">
+      <div class="page-header"><h1>Clients</h1></div>
+      <div class="card"><div class="empty-state">Client data loads from Notion · connect Supabase edge function to see live data</div></div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  // Date + greeting
+  const now = new Date();
+  const hour = now.getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  document.getElementById('greeting').textContent = greeting + ', Gabby.';
+  document.getElementById('navDate').textContent = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+
+  // View switching
+  function showView(name, btn) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('view-' + name).classList.add('active');
+    if (btn) btn.classList.add('active');
+  }
+
+  // Chat
+  function sendChat() {
+    const input = document.getElementById('chatInput');
+    const msg = input.value.trim();
+    if (!msg) return;
+    const messages = document.getElementById('chatMessages');
+    const userMsg = document.createElement('div');
+    userMsg.style.cssText = 'font-size: 14px; padding: 8px 12px; background: rgba(255,255,255,0.5); border-radius: 10px; margin-bottom: 8px; text-align: right;';
+    userMsg.textContent = msg;
+    messages.appendChild(userMsg);
+    input.value = '';
+    setTimeout(() => {
+      const reply = document.createElement('div');
+      reply.className = 'chat-msg sage';
+      reply.textContent = "I'm pulling that together for you now. Give me one moment...";
+      messages.appendChild(reply);
+      messages.scrollTop = messages.scrollHeight;
+    }, 800);
+  }
+
+  // Mac Mini controls
+  function wakeMacMini() {
+    // POST to /functions/v1/wake-mac-mini
+    alert('Sending Wake-on-LAN signal to Mac Mini...\n\nConnect Tailscale + Supabase edge function to activate.');
+  }
+
+  function openScreenShare() {
+    // Replace with your Mac Mini Tailscale IP
+    const tailscaleIP = 'YOUR_MAC_MINI_TAILSCALE_IP';
+    window.open('vnc://' + tailscaleIP, '_blank');
+  }
+</script>
+
+</body>
+</html>
