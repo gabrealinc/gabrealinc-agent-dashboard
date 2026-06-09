@@ -609,6 +609,103 @@ body {
 .loading-pulse { animation: pulse 1.5s ease-in-out infinite; background: rgba(240,200,160,0.2); border-radius: 6px; height: 14px; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
+/* ─── PERSONAL FINANCE ───────────────────────────────────────── */
+.pf-section-divider {
+  display: flex; align-items: center; gap: 14px;
+  margin: 28px 0 20px;
+}
+.pf-divider-line { flex: 1; height: 1px; background: var(--border); }
+.pf-divider-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1.2px; color: var(--text-xsoft);
+  white-space: nowrap;
+}
+.pf-positive { color: #407840 !important; }
+.pf-negative { color: #C04040 !important; }
+
+/* Accounts grid */
+.pf-accounts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 6px;
+}
+.pf-account-card {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px;
+  background: var(--surface-warm);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.pf-account-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 10px rgba(232,160,64,0.12);
+}
+.pf-account-icon {
+  font-size: 22px; line-height: 1;
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(232,160,64,0.12); border-radius: 10px;
+  flex-shrink: 0;
+}
+.pf-account-info { flex: 1; min-width: 0; }
+.pf-account-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.pf-account-type { font-size: 11px; color: var(--text-xsoft); margin-top: 2px; }
+.pf-account-right { text-align: right; flex-shrink: 0; }
+.pf-account-value {
+  font-family: 'Playfair Display', serif;
+  font-size: 17px; font-weight: 600; color: var(--text);
+}
+.pf-account-change { font-size: 11px; font-weight: 600; margin-top: 2px; }
+
+/* Holdings + Allocation layout */
+.pf-bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 16px;
+  align-items: start;
+}
+.pf-pct-badge {
+  display: inline-block;
+  font-size: 10px; font-weight: 700;
+  padding: 2px 6px; border-radius: 5px;
+  margin-left: 6px; vertical-align: middle;
+}
+.pf-badge-pos { background: rgba(60,160,60,0.12); color: #407840; }
+.pf-badge-neg { background: rgba(200,60,60,0.1); color: #C04040; }
+
+/* Allocation */
+.pf-alloc-card { display: flex; flex-direction: column; }
+.pf-alloc-bar-row {
+  display: flex; width: 100%; height: 12px;
+  border-radius: 6px; overflow: hidden;
+  gap: 2px; margin-bottom: 18px;
+}
+.pf-alloc-bar-seg { border-radius: 3px; transition: opacity 0.15s; cursor: pointer; }
+.pf-alloc-bar-seg:hover { opacity: 0.75; }
+.pf-alloc-legend { display: flex; flex-direction: column; gap: 8px; }
+.pf-alloc-legend-item { display: flex; align-items: center; gap: 8px; }
+.pf-alloc-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.pf-alloc-item-label { font-size: 12px; color: var(--text-soft); flex: 1; }
+.pf-alloc-item-pct { font-size: 12px; font-weight: 600; color: var(--text); }
+
+/* Quick Actions */
+.pf-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pf-action-btn {
+  background: var(--surface-warm); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 8px;
+  font-size: 12px; font-weight: 600; color: var(--text-soft);
+  cursor: pointer; text-align: center;
+  transition: all 0.15s;
+}
+.pf-action-btn:hover { background: var(--bg); color: var(--accent-dark); border-color: var(--accent); }
+
+@media (max-width: 900px) {
+  .pf-accounts-grid { grid-template-columns: 1fr; }
+  .pf-bottom-grid { grid-template-columns: 1fr; }
+}
+
 /* ─── QUICK STATS (tasks + invoices) ────────────────────────── */
 .quick-stats-card { padding-bottom: 18px; }
 .quick-stats-row {

@@ -75,6 +75,32 @@ const REVENUE_DATA = [
   { month: "Jun", val: 12400 },
 ];
 
+// ─── Personal Finance / Investments ──────────────────────────────────────────
+const INVESTMENT_ACCOUNTS = [
+  { name: "Fidelity Brokerage", type: "Taxable", value: 42350, change: 12.4, icon: "📈" },
+  { name: "Roth IRA", type: "Retirement", value: 28900, change: 8.2, icon: "🏦" },
+  { name: "SEP-IRA", type: "Business Retirement", value: 15200, change: 6.1, icon: "💼" },
+  { name: "Coinbase", type: "Crypto", value: 8450, change: -3.2, icon: "₿" },
+];
+
+const HOLDINGS = [
+  { ticker: "VTI",  name: "Vanguard Total Market",  shares: "40",    price: "$240.20", value: 9608,  gain: 1280,  pct: 15.3  },
+  { ticker: "QQQ",  name: "Invesco NASDAQ-100",      shares: "15",    price: "$450.10", value: 6752,  gain: 890,   pct: 13.2  },
+  { ticker: "AAPL", name: "Apple Inc.",              shares: "20",    price: "$185.50", value: 3710,  gain: 420,   pct: 12.8  },
+  { ticker: "AMZN", name: "Amazon.com",              shares: "8",     price: "$182.00", value: 1456,  gain: 180,   pct: 14.1  },
+  { ticker: "BTC",  name: "Bitcoin",                 shares: "0.15",  price: "$68,400", value: 10260, gain: -840,  pct: -7.6  },
+  { ticker: "ETH",  name: "Ethereum",                shares: "2.5",   price: "$3,520",  value: 8800,  gain: 240,   pct: 2.8   },
+  { ticker: "VNQ",  name: "Vanguard Real Estate ETF",shares: "25",    price: "$80.20",  value: 2005,  gain: -120,  pct: -2.3  },
+];
+
+const ALLOCATION = [
+  { label: "US Stocks", pct: 48, color: "#E8A040" },
+  { label: "ETFs",      pct: 20, color: "#C0803A" },
+  { label: "Crypto",    pct: 16, color: "#9060C0" },
+  { label: "Real Estate", pct: 8, color: "#60A878" },
+  { label: "Cash",      pct: 8,  color: "#B0A090" },
+];
+
 const INTEL_ITEMS = [
   {
     section: "AI & AUTOMATION",
@@ -679,6 +705,152 @@ function FinanceView() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* ── PERSONAL FINANCE ─────────────────────────────────── */}
+      <div className="pf-section-divider">
+        <div className="pf-divider-line" />
+        <span className="pf-divider-label">Personal Finance</span>
+        <div className="pf-divider-line" />
+      </div>
+
+      {/* Portfolio summary stats */}
+      {(() => {
+        const totalPortfolio = INVESTMENT_ACCOUNTS.reduce((s, a) => s + a.value, 0);
+        const totalGain = HOLDINGS.reduce((s, h) => s + h.gain, 0);
+        const todayChange = 340;
+        return (
+          <div className="three-col" style={{ marginBottom: 16 }}>
+            <div className="stat-card">
+              <div className="stat-label">Total Portfolio</div>
+              <div className="stat-value">${totalPortfolio.toLocaleString()}</div>
+              <div className="stat-sub">Across all accounts</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Today's Change</div>
+              <div className="stat-value pf-positive">+${todayChange.toLocaleString()}</div>
+              <div className="stat-sub">+0.36% · Jun 9</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Total Return</div>
+              <div className="stat-value pf-positive">+${totalGain.toLocaleString()}</div>
+              <div className="stat-sub">+{((totalGain / (totalPortfolio - totalGain)) * 100).toFixed(1)}% all time</div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Investment Accounts */}
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="card-header">
+          <div>
+            <div className="card-label">Investment Accounts</div>
+            <div className="card-subtitle" style={{ marginBottom: 0 }}>Synced balances · as of today</div>
+          </div>
+          <RefreshBtn />
+        </div>
+        <div className="pf-accounts-grid">
+          {INVESTMENT_ACCOUNTS.map((acct, i) => (
+            <div className="pf-account-card" key={i}>
+              <div className="pf-account-icon">{acct.icon}</div>
+              <div className="pf-account-info">
+                <div className="pf-account-name">{acct.name}</div>
+                <div className="pf-account-type">{acct.type}</div>
+              </div>
+              <div className="pf-account-right">
+                <div className="pf-account-value">${acct.value.toLocaleString()}</div>
+                <div className={`pf-account-change ${acct.change >= 0 ? "pf-positive" : "pf-negative"}`}>
+                  {acct.change >= 0 ? "+" : ""}{acct.change}% YTD
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Holdings + Allocation side by side */}
+      <div className="pf-bottom-grid">
+        {/* Holdings table */}
+        <div className="card">
+          <div className="card-header">
+            <div className="card-label">Holdings</div>
+            <RefreshBtn />
+          </div>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Ticker</th>
+                <th>Shares</th>
+                <th>Price</th>
+                <th>Value</th>
+                <th>Gain / Loss</th>
+              </tr>
+            </thead>
+            <tbody>
+              {HOLDINGS.map((h, i) => (
+                <tr key={i}>
+                  <td>
+                    <div style={{ fontWeight: 700, fontSize: 13 }}>{h.ticker}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-xsoft)", marginTop: 1 }}>{h.name}</div>
+                  </td>
+                  <td style={{ color: "var(--text-soft)" }}>{h.shares}</td>
+                  <td style={{ fontWeight: 500 }}>{h.price}</td>
+                  <td style={{ fontWeight: 600 }}>${h.value.toLocaleString()}</td>
+                  <td>
+                    <span className={h.gain >= 0 ? "pf-positive" : "pf-negative"} style={{ fontWeight: 600, fontSize: 13 }}>
+                      {h.gain >= 0 ? "+" : ""}${Math.abs(h.gain).toLocaleString()}
+                    </span>
+                    <span className={`pf-pct-badge ${h.pct >= 0 ? "pf-badge-pos" : "pf-badge-neg"}`}>
+                      {h.pct >= 0 ? "+" : ""}{h.pct}%
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Allocation */}
+        <div className="card pf-alloc-card">
+          <div className="card-label" style={{ marginBottom: 16 }}>Allocation</div>
+          <div className="pf-alloc-bar-row">
+            {ALLOCATION.map((a, i) => (
+              <div
+                key={i}
+                className="pf-alloc-bar-seg"
+                style={{ width: `${a.pct}%`, background: a.color }}
+                title={`${a.label}: ${a.pct}%`}
+              />
+            ))}
+          </div>
+          <div className="pf-alloc-legend">
+            {ALLOCATION.map((a, i) => (
+              <div className="pf-alloc-legend-item" key={i}>
+                <div className="pf-alloc-dot" style={{ background: a.color }} />
+                <span className="pf-alloc-item-label">{a.label}</span>
+                <span className="pf-alloc-item-pct">{a.pct}%</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="pf-divider-line" style={{ margin: "20px 0 16px" }} />
+
+          <div className="card-label" style={{ marginBottom: 12, fontSize: 11 }}>Quick Actions</div>
+          <div className="pf-actions">
+            <button className="pf-action-btn" onClick={() => alert("Connect brokerage via Plaid to enable live data.")}>
+              🔗 Link Account
+            </button>
+            <button className="pf-action-btn" onClick={() => alert("Transfer funds — coming soon.")}>
+              💸 Transfer
+            </button>
+            <button className="pf-action-btn" onClick={() => alert("Full analysis report — coming soon.")}>
+              📊 Report
+            </button>
+            <button className="pf-action-btn" onClick={() => alert("Set investment goals — coming soon.")}>
+              🎯 Goals
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
