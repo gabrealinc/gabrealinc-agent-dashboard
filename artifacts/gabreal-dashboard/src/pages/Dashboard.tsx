@@ -30,12 +30,29 @@ const SCHEDULE = [
   { time: "4:00 PM", event: "Luna Vita Check-in" },
 ];
 
-const TASKS = [
-  { id: 1, name: "Add Favicon to Luxx Site", date: "Jun 4", status: "To Do" },
-  { id: 2, name: "Send Issa Dashboard", date: "Jun 4", status: "To Do" },
-  { id: 3, name: "Luna Vita Brand Deck", date: "Jun 4", status: "In Progress" },
-  { id: 4, name: "LACES Klaviyo Flow", date: "Jun 6", status: "In Progress" },
-  { id: 5, name: "Create Labels for All Products", date: "Jun 11", status: "To Do" },
+type Task = {
+  id: number;
+  notionId: string;
+  name: string;
+  date: string;       // display string e.g. "Jun 4"
+  sortDate: string;   // ISO "2026-06-04" for sorting
+  status: string;
+  client: string;
+  notes: string;
+};
+
+const STATUS_CYCLE: Record<string, string> = {
+  "To Do": "In Progress",
+  "In Progress": "Done",
+  "Done": "To Do",
+};
+
+const TASKS_SEED: Task[] = [
+  { id: 1, notionId: "task-001", name: "Add Favicon to Luxx Site", date: "Jun 4", sortDate: "2026-06-04", status: "To Do", client: "Luxx", notes: "Use the square version of the new logo — export at 32×32 and 180×180." },
+  { id: 2, notionId: "task-002", name: "Send Issa Dashboard", date: "Jun 4", sortDate: "2026-06-04", status: "To Do", client: "Issa Rae Media", notes: "Send the campaign analytics PDF and Notion dashboard link." },
+  { id: 3, notionId: "task-003", name: "Luna Vita Brand Deck", date: "Jun 4", sortDate: "2026-06-04", status: "In Progress", client: "Luna Vita", notes: "First full draft due Friday EOD. Kea is waiting — she asked about timeline this morning." },
+  { id: 4, notionId: "task-004", name: "LACES Klaviyo Flow", date: "Jun 6", sortDate: "2026-06-06", status: "In Progress", client: "LACES", notes: "Send updated proposal to Jeff by Thursday. Cover the welcome series + win-back flow." },
+  { id: 5, notionId: "task-005", name: "Create Labels for All Products", date: "Jun 11", sortDate: "2026-06-11", status: "To Do", client: "Luna Vita", notes: "Print-ready files needed — 3×2 in, CMYK, 300dpi. Check with Kea on label copy." },
 ];
 
 const INVOICES = [
@@ -128,6 +145,117 @@ function InvoiceStatus({ s }: { s: string }) {
   if (s === "Paid") return <span className="status-paid">Paid</span>;
   if (s === "Pending") return <span className="status-pending">Pending</span>;
   return <span className="status-overdue">Overdue</span>;
+}
+
+// ─── Priorities panel ─────────────────────────────────────────────────────────
+function PrioritiesPanel() {
+  const [tasks, setTasks] = useState<Task[]>(
+    [...TASKS_SEED].sort((a, b) => a.sortDate.localeCompare(b.sortDate))
+  );
+  const [expanded, setExpanded] = useState<number | null>(null);
+  const [syncing, setSyncing] = useState<number | null>(null);
+  const [syncError, setSyncError] = useState<number | null>(null);
+
+  function toggleExpand(id: number) {
+    setExpanded(prev => prev === id ? null : id);
+  }
+
+  async function cycleStatus(task: Task, e: React.MouseEvent) {
+    e.stopPropagation();
+    const next = STATUS_CYCLE[task.status] ?? "To Do";
+    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: next } : t));
+    setSyncing(task.id);
+    setSyncError(null);
+    try {
+      const res = await fetch("/api/update-notion-task", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notionId: task.notionId, status: next }),
+      });
+      if (!res.ok) throw new Error("not ok");
+    } catch {
+      setSyncError(task.id);
+      setTimeout(() => setSyncError(null), 2500);
+    } finally {
+      setSyncing(null);
+    }
+  }
+
+  return (
+    <div style={{ marginTop: 10 }}>
+      {tasks.map(t => (
+        <div key={t.id}>
+          <div
+            className={`task-row task-row-clickable ${expanded === t.id ? "task-row-open" : ""}`}
+            onClick={() => toggleExpand(t.id)}
+          >
+            <div className="task-check" onClick={e => { e.stopPropagation(); cycleStatus(t, e); }} title="Click to advance status" />
+            <div className="task-name">{t.name}</div>
+            <div className="task-client-chip">{t.client}</div>
+            <div className="task-date">{t.date}</div>
+            <button
+              className={`task-status-pill ${
+                t.status === "To Do" ? "pill-todo" :
+                t.status === "In Progress" ? "pill-progress" : "pill-done"
+              } ${syncing === t.id ? "pill-syncing" : ""}`}
+              onClick={e => cycleStatus(t, e)}
+              title="Click to change status"
+            >
+              {syncing === t.id ? "…" : t.status}
+            </button>
+            <span className={`task-expand-arrow ${expanded === t.id ? "open" : ""}`}>›</span>
+          </div>
+          {expanded === t.id && (
+            <div className="task-detail">
+              {syncError === t.id && (
+                <div className="task-sync-error">⚠ Notion sync failed — update saved locally</div>
+              )}
+              <div className="task-detail-row">
+                <span className="task-detail-label">Client</span>
+                <span className="task-detail-value">{t.client}</span>
+              </div>
+              <div className="task-detail-row">
+                <span className="task-detail-label">Due</span>
+                <span className="task-detail-value">{t.date}</span>
+              </div>
+              {t.notes && (
+                <div className="task-detail-row task-detail-notes">
+                  <span className="task-detail-label">Notes</span>
+                  <span className="task-detail-value">{t.notes}</span>
+                </div>
+              )}
+              <div className="task-status-row">
+                {(["To Do", "In Progress", "Done"] as const).map(s => (
+                  <button
+                    key={s}
+                    className={`task-status-option ${t.status === s ? "active" : ""}`}
+                    onClick={e => {
+                      e.stopPropagation();
+                      if (t.status !== s) {
+                        const next = s;
+                        setTasks(prev => prev.map(x => x.id === t.id ? { ...x, status: next } : x));
+                        setSyncing(t.id);
+                        setSyncError(null);
+                        fetch("/api/update-notion-task", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ notionId: t.notionId, status: next }),
+                        }).then(r => { if (!r.ok) throw new Error(); })
+                          .catch(() => { setSyncError(t.id); setTimeout(() => setSyncError(null), 2500); })
+                          .finally(() => setSyncing(null));
+                      }
+                    }}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
 }
 
 // ─── View: HOME ───────────────────────────────────────────────────────────────
@@ -283,16 +411,7 @@ function HomeView() {
               </div>
               <RefreshBtn />
             </div>
-            <div style={{ marginTop: 10 }}>
-              {TASKS.map(t => (
-                <div className="task-row" key={t.id}>
-                  <div className="task-check" />
-                  <div className="task-name">{t.name}</div>
-                  <div className="task-date">{t.date}</div>
-                  <StatusPill status={t.status} />
-                </div>
-              ))}
-            </div>
+            <PrioritiesPanel />
           </div>
 
           {/* Mac Mini */}

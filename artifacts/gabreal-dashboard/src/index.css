@@ -382,6 +382,79 @@ body {
 .pill-done { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; background: var(--green-bg); color: #407840; }
 .pill-waiting { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; background: #EEF3FF; color: #4060A0; }
 
+/* ── Task row interactive states ── */
+.task-row-clickable { cursor: pointer; border-radius: 8px; transition: background 0.12s; padding-left: 6px; padding-right: 6px; margin: 0 -6px; }
+.task-row-clickable:hover { background: var(--surface-warm); }
+.task-row-open { background: var(--surface-warm); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.task-client-chip {
+  font-size: 11px; font-weight: 600;
+  padding: 2px 8px; border-radius: 20px;
+  background: var(--accent-bg); color: var(--accent-dark);
+  white-space: nowrap; flex-shrink: 0;
+}
+.task-status-pill {
+  font-size: 11px; font-weight: 600;
+  padding: 3px 10px; border-radius: 20px;
+  border: none; cursor: pointer; flex-shrink: 0;
+  transition: filter 0.12s, transform 0.1s;
+}
+.task-status-pill:hover { filter: brightness(0.92); transform: scale(1.04); }
+.task-status-pill.pill-syncing { opacity: 0.6; cursor: default; }
+.task-expand-arrow {
+  font-size: 14px; color: var(--text-xsoft);
+  transition: transform 0.2s; flex-shrink: 0;
+  display: inline-block;
+}
+.task-expand-arrow.open { transform: rotate(90deg); }
+
+/* ── Task detail panel ── */
+.task-detail {
+  background: var(--surface-warm);
+  border-radius: 0 0 10px 10px;
+  margin: 0 -6px;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--border);
+  animation: task-expand 0.15s ease;
+}
+@keyframes task-expand {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.task-sync-error {
+  font-size: 11px; color: #B05040;
+  background: #FFF0EC; border-radius: 6px;
+  padding: 4px 8px; margin-bottom: 8px;
+}
+.task-detail-row {
+  display: flex; gap: 8px; align-items: flex-start;
+  margin-bottom: 6px;
+}
+.task-detail-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--text-xsoft);
+  min-width: 52px; flex-shrink: 0; padding-top: 1px;
+}
+.task-detail-value { font-size: 13px; color: var(--text); line-height: 1.5; }
+.task-detail-notes .task-detail-value { color: var(--text-soft); font-style: italic; }
+
+/* ── Status picker inside detail ── */
+.task-status-row {
+  display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap;
+}
+.task-status-option {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px; font-weight: 600;
+  padding: 4px 12px; border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: var(--surface); color: var(--text-soft);
+  cursor: pointer; transition: all 0.12s;
+}
+.task-status-option:hover { border-color: var(--accent); color: var(--accent-dark); }
+.task-status-option.active {
+  background: var(--accent); color: white;
+  border-color: var(--accent);
+}
+
 /* ─── MAC MINI CARD ──────────────────────────────────────────── */
 .mac-mini-btns { display: flex; gap: 10px; margin-top: 6px; }
 .btn-mac {
