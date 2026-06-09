@@ -18,6 +18,9 @@ function formatDate() {
 function formatTime() {
   return new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
+function isoDate(d: Date) { return d.toISOString().slice(0, 10); }
+function addDays(d: Date, n: number) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
+function weekStart(d: Date) { const r = new Date(d); const day = r.getDay(); r.setDate(r.getDate() - day + (day === 0 ? -6 : 1)); return r; }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type View = "home" | "clients" | "finance" | "intelligence" | "substack" | "spirit" | "agents";
@@ -436,6 +439,106 @@ function HomeView() {
               <button className="btn btn-dismiss">Deny ✕</button>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* ── Quick Stats ── Tasks + Invoices ───────────────────── */}
+      {(() => {
+        const today = new Date();
+        const todayISO = isoDate(today);
+        const weekEnd = isoDate(addDays(weekStart(today), 6));
+        const monthStr = today.toLocaleString("en-US", { month: "short" }); // "Jun"
+
+        const overdue  = TASKS_SEED.filter(t => t.sortDate < todayISO && t.status !== "Done").length;
+        const dueToday = TASKS_SEED.filter(t => t.sortDate === todayISO && t.status !== "Done").length;
+        const dueWeek  = TASKS_SEED.filter(t => t.sortDate > todayISO && t.sortDate <= weekEnd && t.status !== "Done").length;
+        const dueMonth = TASKS_SEED.filter(t => t.sortDate.startsWith(`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}`) && t.status !== "Done").length;
+
+        const parseAmt = (s: string) => Number(s.replace(/[$,]/g, ""));
+        const monthInvoices = INVOICES.filter(inv => inv.date.startsWith(monthStr));
+        const sentAmt   = monthInvoices.reduce((s, i) => s + parseAmt(i.amount), 0);
+        const paidAmt   = monthInvoices.filter(i => i.status === "Paid").reduce((s, i) => s + parseAmt(i.amount), 0);
+        const paidCount = monthInvoices.filter(i => i.status === "Paid").length;
+        const outstandingAmt = INVOICES.filter(i => i.status !== "Paid").reduce((s, i) => s + parseAmt(i.amount), 0);
+        const fmtUSD = (n: number) => `$${n.toLocaleString()}`;
+
+        return (
+          <div className="quick-stats-card card">
+            <div className="quick-stats-row">
+              {/* Task buckets */}
+              <div className="qs-section">
+                <div className="qs-section-label">Tasks</div>
+                <div className="qs-items">
+                  {overdue > 0 && (
+                    <div className="qs-item qs-overdue">
+                      <span className="qs-num">{overdue}</span>
+                      <span className="qs-label">Overdue</span>
+                    </div>
+                  )}
+                  <div className="qs-item">
+                    <span className="qs-num">{dueToday}</span>
+                    <span className="qs-label">Due today</span>
+                  </div>
+                  <div className="qs-item">
+                    <span className="qs-num">{dueWeek}</span>
+                    <span className="qs-label">Due this week</span>
+                  </div>
+                  <div className="qs-item">
+                    <span className="qs-num">{dueMonth}</span>
+                    <span className="qs-label">Due this month</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="qs-divider" />
+
+              {/* Invoice summary */}
+              <div className="qs-section">
+                <div className="qs-section-label">Invoices · {monthStr}</div>
+                <div className="qs-items">
+                  <div className="qs-item">
+                    <span className="qs-num">{fmtUSD(sentAmt)}</span>
+                    <span className="qs-label">{monthInvoices.length} sent this month</span>
+                  </div>
+                  <div className="qs-item qs-paid">
+                    <span className="qs-num">{fmtUSD(paidAmt)}</span>
+                    <span className="qs-label">{paidCount} paid</span>
+                  </div>
+                  <div className="qs-item qs-outstanding">
+                    <span className="qs-num">{fmtUSD(outstandingAmt)}</span>
+                    <span className="qs-label">outstanding (all)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── Agent Activity ───────────────────────────────────── */}
+      <div className="card">
+        <div className="card-header">
+          <div>
+            <div className="card-label">Agent Activity</div>
+            <div className="card-subtitle" style={{ marginBottom: 0 }}>Your multi-agent operating system · today</div>
+          </div>
+          <RefreshBtn />
+        </div>
+        <div className="agent-activity-grid">
+          {AGENTS.map((a, i) => (
+            <div className="agent-activity-row" key={i}>
+              <div className="agent-activity-left">
+                <div className={`agent-dot dot-${a.status}`} style={{ flexShrink: 0 }} />
+                <div>
+                  <div className="agent-activity-name">{a.name} <span className="agent-activity-role">{a.role}</span></div>
+                  <div className="agent-activity-last">{a.last}</div>
+                </div>
+              </div>
+              <span className={`agent-status-badge status-${a.status}`} style={{ flexShrink: 0 }}>
+                {a.status.charAt(0).toUpperCase() + a.status.slice(1)}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
 
