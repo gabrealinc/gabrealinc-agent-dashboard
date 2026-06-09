@@ -1,0 +1,1 @@
+- [Dark glass design system](dark-glass-design.md) — full dark redesign uses rgba glassmorphism + amber gold (#E8A040) — never use light surface colors
