@@ -1,4 +1,23 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+
+const BASE = (import.meta as any).env?.BASE_URL?.replace(/\/$/, "") ?? "";
+async function gcalFetch<T>(path: string, opts?: RequestInit): Promise<T> {
+  const res = await fetch(`${BASE}/api/gcal${path}`, {
+    ...opts,
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...(opts?.headers ?? {}) },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+// Detect local/temp IDs vs real GCal IDs (local IDs look like "e1", "e1749000000000")
+function isLocalId(id: string) {
+  return /^e\d*$/.test(id);
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type CalEvent = {
@@ -80,12 +99,14 @@ const TOTAL_HOURS = HOUR_END - HOUR_START;
 
 // ─── Event Edit Panel ─────────────────────────────────────────────────────────
 function EditPanel({
-  event, onSave, onDelete, onClose,
+  event, onSave, onDelete, onClose, saving, saveError,
 }: {
   event: CalEvent | null;
   onSave: (e: CalEvent) => void;
   onDelete: (id: string) => void;
   onClose: () => void;
+  saving?: boolean;
+  saveError?: string;
 }) {
   const [form, setForm] = useState<CalEvent>(
     event ?? {
@@ -156,10 +177,19 @@ function EditPanel({
           ))}
         </div>
       </div>
+      {saveError && (
+        <div style={{ padding: "6px 0 0", fontSize: 12, color: "#c0522a", fontFamily: "Inter, sans-serif" }}>
+          ⚠ {saveError}
+        </div>
+      )}
       <div className="cal-edit-footer">
-        <button className="btn btn-accent" onClick={() => onSave(form)} style={{ flex: 1 }}>Save</button>
+        <button className="btn btn-accent" onClick={() => onSave(form)} style={{ flex: 1 }} disabled={saving}>
+          {saving ? "Saving…" : "Save"}
+        </button>
         {event && (
-          <button className="btn btn-dismiss" onClick={() => onDelete(form.id)} style={{ flex: 1 }}>Delete</button>
+          <button className="btn btn-dismiss" onClick={() => onDelete(form.id)} style={{ flex: 1 }} disabled={saving}>
+            Delete
+          </button>
         )}
       </div>
     </div>
@@ -325,7 +355,10 @@ export default function CalendarModal({ onClose }: { onClose: () => void }) {
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<CalEvent | null | "new">(null);
   const [newEventDefaults, setNewEventDefaults] = useState<Partial<CalEvent>>({});
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const overlayRef = useRef<HTMLDivElement>(null);
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   // Fetch GCal events for the visible date range
   useEffect(() => {
@@ -397,17 +430,54 @@ export default function CalendarModal({ onClose }: { onClose: () => void }) {
     setEditing("new");
   }
 
-  function handleSave(ev: CalEvent) {
+  async function handleSave(ev: CalEvent) {
+    setSaving(true);
+    setSaveError("");
+    // Optimistically update local state
     setEvents(prev => {
       const exists = prev.find(e => e.id === ev.id);
       return exists ? prev.map(e => e.id === ev.id ? ev : e) : [...prev, ev];
     });
-    setEditing(null);
+    try {
+      const payload = { ...ev, timeZone };
+      if (isLocalId(ev.id)) {
+        // New event — create on GCal
+        const created = await gcalFetch<{ id: string }>("/events", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        // Replace temp ID with real GCal ID
+        setEvents(prev => prev.map(e => e.id === ev.id ? { ...e, id: created.id } : e));
+      } else {
+        // Existing GCal event — update
+        await gcalFetch(`/events/${encodeURIComponent(ev.id)}`, {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+        });
+      }
+      setEditing(null);
+    } catch (err: any) {
+      setSaveError(err.message ?? "Save failed — check your connection.");
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function handleDelete(id: string) {
+  async function handleDelete(id: string) {
+    setSaving(true);
+    setSaveError("");
+    // Optimistically remove locally
     setEvents(prev => prev.filter(e => e.id !== id));
     setEditing(null);
+    if (!isLocalId(id)) {
+      try {
+        await gcalFetch(`/events/${encodeURIComponent(id)}`, { method: "DELETE" });
+      } catch (err: any) {
+        // Best-effort — event is already removed from view
+        console.warn("GCal delete failed:", err.message);
+      }
+    }
+    setSaving(false);
   }
 
   const periodLabel = calView === "week"
@@ -463,7 +533,9 @@ export default function CalendarModal({ onClose }: { onClose: () => void }) {
               event={editingEvent === null ? null : editingEvent as CalEvent}
               onSave={handleSave}
               onDelete={handleDelete}
-              onClose={() => setEditing(null)}
+              onClose={() => { setEditing(null); setSaveError(""); }}
+              saving={saving}
+              saveError={saveError}
             />
           )}
         </div>

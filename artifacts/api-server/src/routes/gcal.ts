@@ -86,6 +86,98 @@ router.get("/events", async (req: Request, res: Response) => {
   }
 });
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+// Map dashboard hex → GCal colorId (best-effort)
+const HEX_TO_COLOR_ID: Record<string, string> = {
+  "#FFCDD2": "4", "#C8E6C9": "2", "#A5D6A7": "3",
+  "#FFE0B2": "5", "#F8BBD9": "6", "#C8E6C9a": "7",
+  "#E8EAF6": "8", "#E1BEE7": "9", "#E0F7FA": "10", "#F3E5F5": "11",
+};
+
+function buildEventBody(body: any) {
+  const { title, date, startTime, endTime, location, description, meetingLink, color, timeZone, isAllDay } = body;
+  const tz = timeZone || "UTC";
+  const gcalEvent: any = {
+    summary: title || "(no title)",
+    ...(location ? { location } : {}),
+    ...(description ? { description } : {}),
+  };
+  if (isAllDay) {
+    gcalEvent.start = { date };
+    gcalEvent.end   = { date };
+  } else {
+    gcalEvent.start = { dateTime: `${date}T${startTime}:00`, timeZone: tz };
+    gcalEvent.end   = { dateTime: `${date}T${endTime}:00`,   timeZone: tz };
+  }
+  if (color && HEX_TO_COLOR_ID[color]) gcalEvent.colorId = HEX_TO_COLOR_ID[color];
+  return gcalEvent;
+}
+
+// ─── POST /api/gcal/events — create a new event ───────────────────────────────
+router.post("/events", async (req: Request, res: Response) => {
+  try {
+    const connectors = getConnectors();
+    const calendarId = (req.body?.calendarId as string) || "primary";
+    const result = await connectors.proxy(
+      "google-calendar",
+      `/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`,
+      {
+        method: "POST",
+        body: JSON.stringify(buildEventBody(req.body)),
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+    const data = await result.json();
+    if (data.error) return res.status(400).json({ error: data.error.message });
+    return res.status(201).json({ id: data.id, event: data });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── PATCH /api/gcal/events/:id — update an existing event ───────────────────
+router.patch("/events/:id", async (req: Request, res: Response) => {
+  const { id } = req.params;
+  try {
+    const connectors = getConnectors();
+    const calendarId = (req.body?.calendarId as string) || "primary";
+    const result = await connectors.proxy(
+      "google-calendar",
+      `/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(id)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(buildEventBody(req.body)),
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+    const data = await result.json();
+    if (data.error) return res.status(400).json({ error: data.error.message });
+    return res.json({ ok: true, event: data });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── DELETE /api/gcal/events/:id — delete an event ───────────────────────────
+router.delete("/events/:id", async (req: Request, res: Response) => {
+  const { id } = req.params;
+  try {
+    const connectors = getConnectors();
+    const calendarId = (req.query.calendarId as string) || "primary";
+    const result = await connectors.proxy(
+      "google-calendar",
+      `/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(id)}`,
+      { method: "DELETE" }
+    );
+    // GCal returns 204 on success with no body
+    if (result.status === 204 || result.ok) return res.json({ ok: true });
+    const data = await result.json();
+    return res.status(400).json({ error: data.error?.message ?? "Delete failed" });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── GET /api/gcal/calendars — list available calendars ──────────────────────
 router.get("/calendars", async (req: Request, res: Response) => {
   try {

@@ -409,6 +409,31 @@ router.get("/substack", async (req: Request, res: Response) => {
   }
 });
 
+// ─── PATCH /api/notion/substack/:id — update a post's properties in Notion ───
+router.patch("/substack/:id", async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { title, subtitle, status, body } = req.body ?? {};
+  try {
+    const connectors = getConnectors();
+    const properties: any = {};
+    if (title !== undefined)    properties["Name"]     = { title: [{ text: { content: title } }] };
+    if (subtitle !== undefined) properties["Subtitle"] = { rich_text: [{ text: { content: subtitle } }] };
+    if (status !== undefined)   properties["Status"]   = { select: { name: status } };
+    if (body !== undefined)     properties["Body"]     = { rich_text: [{ text: { content: body.slice(0, 2000) } }] };
+
+    const result = await connectors.proxy("notion", `/v1/pages/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ properties }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const data = await result.json();
+    if (data.object === "error") return res.status(400).json({ error: data.message });
+    return res.json({ ok: true });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── POST /api/notion/clients — create a new client page ─────────────────────
 router.post("/clients", async (req: Request, res: Response) => {
   const dbId = (req.body?.db as string) || process.env.NOTION_CLIENTS_DB_ID;

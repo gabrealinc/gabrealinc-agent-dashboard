@@ -1512,6 +1512,54 @@ function SubstackView() {
   const [loading, setLoading] = useState(true);
   const [notionDbUrl, setNotionDbUrl] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [editTitle, setEditTitle] = useState("");
+  const [editSubtitle, setEditSubtitle] = useState("");
+  const [editBody, setEditBody] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState("");
+
+  // Sync editor fields when selected post changes
+  useEffect(() => {
+    if (selected) {
+      setEditTitle(selected.title ?? "");
+      setEditSubtitle(selected.subtitle ?? "");
+      setEditBody(selected.body ?? "");
+      setSaveMsg("");
+    }
+  }, [selected?.id]);
+
+  async function handleSavePost(newStatus?: string) {
+    if (!selected) return;
+    setSaving(true);
+    setSaveMsg("");
+    try {
+      const body: any = { title: editTitle, subtitle: editSubtitle, body: editBody };
+      if (newStatus) body.status = newStatus;
+      const BASE = (import.meta as any).env?.BASE_URL?.replace(/\/$/, "") ?? "";
+      const res = await fetch(`${BASE}/api/notion/substack/${encodeURIComponent(selected.id)}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || `HTTP ${res.status}`);
+      }
+      // Update local post state
+      const updatedStatus = newStatus ?? selected.status;
+      setPosts(prev => prev.map(p => p.id === selected.id
+        ? { ...p, title: editTitle, subtitle: editSubtitle, body: editBody, status: updatedStatus }
+        : p
+      ));
+      setSelected(prev => prev ? { ...prev, title: editTitle, subtitle: editSubtitle, body: editBody, status: updatedStatus } : prev);
+      setSaveMsg(newStatus === "Published" ? "✓ Published to Notion" : "✓ Draft saved");
+    } catch (err: any) {
+      setSaveMsg("⚠ " + (err.message ?? "Save failed"));
+    } finally {
+      setSaving(false);
+    }
+  }
 
   const statusColors: Record<string, string> = {
     "In Progress": "pill-progress",
@@ -1591,18 +1639,22 @@ function SubstackView() {
         <div className="editor-panel">
           {selected ? (
             <>
-              <input className="editor-title" defaultValue={selected.title} key={`title-${selected.id}`} placeholder="Post title..." />
-              <input className="editor-subtitle" defaultValue={selected.subtitle} key={`sub-${selected.id}`} placeholder="Subtitle..." />
+              <input className="editor-title" value={editTitle} onChange={e => setEditTitle(e.target.value)} placeholder="Post title..." />
+              <input className="editor-subtitle" value={editSubtitle} onChange={e => setEditSubtitle(e.target.value)} placeholder="Subtitle..." />
               <div className="editor-toolbar">
                 {["B", "I", "H2", "Link", "Quote", "Bullets", "Numbers", "Image"].map(t => (
                   <button className="toolbar-btn" key={t}>{t}</button>
                 ))}
               </div>
-              <textarea className="editor-body" defaultValue={selected.body} key={`body-${selected.id}`} placeholder="Start writing..." />
+              <textarea className="editor-body" value={editBody} onChange={e => setEditBody(e.target.value)} placeholder="Start writing..." />
               <div className="editor-actions">
-                <button className="btn btn-accent">Publish</button>
-                <button className="btn btn-approve">Schedule</button>
-                <button className="btn btn-dismiss">Save Draft</button>
+                <button className="btn btn-accent" disabled={saving} onClick={() => handleSavePost("Published")}>
+                  {saving ? "Saving…" : "Publish"}
+                </button>
+                <button className="btn btn-approve" disabled={saving} onClick={() => handleSavePost("Scheduled")}>Schedule</button>
+                <button className="btn btn-dismiss" disabled={saving} onClick={() => handleSavePost()}>
+                  {saving ? "Saving…" : "Save Draft"}
+                </button>
                 {selected.notionUrl && (
                   <a href={selected.notionUrl} target="_blank" rel="noopener noreferrer"
                     className="btn" style={{ fontSize: 12, textDecoration: "none", background: "var(--bg-soft)", color: "var(--text-soft)", border: "1px solid var(--border)" }}>
@@ -1610,6 +1662,11 @@ function SubstackView() {
                   </a>
                 )}
               </div>
+              {saveMsg && (
+                <div style={{ fontSize: 12, padding: "4px 0", color: saveMsg.startsWith("⚠") ? "#c0522a" : "#4a7c59", fontFamily: "Inter, sans-serif" }}>
+                  {saveMsg}
+                </div>
+              )}
             </>
           ) : (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--text-xsoft)", fontSize: 14 }}>
