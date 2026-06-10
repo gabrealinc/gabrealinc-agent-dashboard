@@ -1092,14 +1092,16 @@ function ClientsView() {
   const [showNewClient, setShowNewClient] = useState(false);
   const [clients, setClients] = useState(CLIENTS);
   const [clientsLoading, setClientsLoading] = useState(true);
+  const [notionDbUrl, setNotionDbUrl] = useState<string>("");
   const dbId = import.meta.env.VITE_NOTION_CLIENTS_DB_ID;
 
   async function loadClients() {
     setClientsLoading(true);
     try {
       const url = dbId ? `/notion/clients?db=${encodeURIComponent(dbId)}` : "/notion/clients";
-      const data = await apiFetch<{ clients: typeof CLIENTS }>(url);
+      const data = await apiFetch<{ clients: typeof CLIENTS; notionDbUrl?: string }>(url);
       if (data.clients?.length) setClients(data.clients);
+      if (data.notionDbUrl) setNotionDbUrl(data.notionDbUrl);
     } catch {
       // keep mock
     } finally {
@@ -1120,8 +1122,22 @@ function ClientsView() {
   return (
     <div>
       <div className="page-header">
-        <h1 className="page-greeting">Clients</h1>
-        <p className="page-subtitle">Your active roster · synced from Notion</p>
+        <div>
+          <h1 className="page-greeting">Clients</h1>
+          <p className="page-subtitle" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            Your active roster · synced from Notion
+            {notionDbUrl && (
+              <a href={notionDbUrl} target="_blank" rel="noopener noreferrer"
+                style={{ fontSize: 12, color: "var(--accent)", textDecoration: "none", fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 3 }}>
+                Open database ↗
+              </a>
+            )}
+            {clientsLoading && <span style={{ fontSize: 11, color: "var(--text-xsoft)" }}>syncing…</span>}
+          </p>
+        </div>
+        <button className="ccv2-action-btn" onClick={loadClients} disabled={clientsLoading} style={{ alignSelf: "flex-start" }}>
+          {clientsLoading ? "Refreshing…" : "↺ Refresh"}
+        </button>
       </div>
 
       {/* Summary stats */}

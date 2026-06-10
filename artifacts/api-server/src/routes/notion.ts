@@ -128,32 +128,65 @@ router.patch("/tasks/:id", async (req: Request, res: Response) => {
 });
 
 // ─── GET /api/notion/clients?db=<database_id> ────────────────────────────────
+// Auto-discovers the Clients database by name if NOTION_CLIENTS_DB_ID not set.
 router.get("/clients", async (req: Request, res: Response) => {
-  const dbId = (req.query.db as string) || DEFAULT_CLIENTS_DB;
   try {
     const connectors = getConnectors();
+
+    let dbId = (req.query.db as string) || process.env.NOTION_CLIENTS_DB_ID || DEFAULT_CLIENTS_DB;
+    let dbUrl: string | undefined;
+
+    // Auto-discover by searching for a database with "Client" in the title
+    if (!process.env.NOTION_CLIENTS_DB_ID && !(req.query.db as string)) {
+      const searchRes = await connectors.proxy("notion", "/v1/search", {
+        method: "POST",
+        body: JSON.stringify({ query: "Client", filter: { value: "database", property: "object" } }),
+        headers: { "Content-Type": "application/json" },
+      });
+      const searchData = await searchRes.json();
+      const found = (searchData.results ?? []).find((db: any) => {
+        const title = (db.title ?? []).map((t: any) => t.plain_text).join("").toLowerCase();
+        return title.includes("client");
+      });
+      if (found) {
+        dbId = found.id;
+        dbUrl = found.url;
+      }
+    }
+
     const data = await queryDb(connectors, dbId, {
       sorts: [{ property: "Name", direction: "ascending" }],
     });
 
+    // Capture the database URL from the first result if we don't have it yet
+    if (!dbUrl && data.results?.length) {
+      // Notion doesn't return DB URL directly from query — build it from the ID
+      dbUrl = `https://notion.so/${dbId.replace(/-/g, "")}`;
+    } else if (!dbUrl) {
+      dbUrl = `https://notion.so/${dbId.replace(/-/g, "")}`;
+    }
+
     const clients = (data.results ?? []).map((page: any) => ({
       notionId: page.id,
-      name: prop(page, "Name") || prop(page, "Client") || "(untitled)",
-      contact: prop(page, "Contact") || prop(page, "Point of Contact") || "",
+      name: prop(page, "Name") || prop(page, "Client") || prop(page, "Client Name") || "(untitled)",
+      contact: prop(page, "Contact") || prop(page, "Point of Contact") || prop(page, "Contact Person") || "",
       email: prop(page, "Email") || "",
       phone: prop(page, "Phone") || "",
-      type: prop(page, "Services") || prop(page, "Type") || prop(page, "Package") || "",
+      type: prop(page, "Services") || prop(page, "Type") || prop(page, "Package") || prop(page, "Service Type") || "",
       status: prop(page, "Status") || "Active",
-      value: prop(page, "Value") || prop(page, "Monthly Value") || prop(page, "Contract Value") || 0,
+      value: prop(page, "Value") || prop(page, "Monthly Value") || prop(page, "Contract Value") || prop(page, "Retainer") || 0,
       valueLabel: prop(page, "Billing Type") || prop(page, "Contract Type") || "monthly",
-      nextMeeting: prop(page, "Next Meeting") || prop(page, "Next Call") || "—",
-      lastActivity: prop(page, "Last Activity") || prop(page, "Last Updated") || "",
-      tags: (prop(page, "Tags") || prop(page, "Services") || "")
-        .split(",").map((s: string) => s.trim()).filter(Boolean),
+      nextMeeting: prop(page, "Next Meeting") || prop(page, "Next Call") || prop(page, "Meeting Date") || "—",
+      lastActivity: prop(page, "Last Activity") || prop(page, "Last Updated") || prop(page, "Last Contact") || "",
+      deliverables: Number(prop(page, "Deliverables") || prop(page, "Open Items") || prop(page, "Tasks") || 0),
+      tags: (() => {
+        const raw = prop(page, "Tags") || prop(page, "Services") || prop(page, "Labels") || "";
+        return String(raw).split(",").map((s: string) => s.trim()).filter(Boolean);
+      })(),
       notionUrl: page.url,
     }));
 
-    return res.json({ clients });
+    return res.json({ clients, notionDbUrl: dbUrl });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }
