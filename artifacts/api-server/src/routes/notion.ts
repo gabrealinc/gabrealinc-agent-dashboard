@@ -114,13 +114,13 @@ router.get("/tasks", async (req: Request, res: Response) => {
     // Normalize common Notion status variants to dashboard-standard values
     function normalizeStatus(raw: string): string {
       const s = raw.toLowerCase().trim();
-      if (s === "done" || s === "complete" || s === "completed" || s === "finished") return "Done";
-      if (s === "in progress" || s === "in-progress" || s === "doing" || s === "wip" || s === "active") return "In Progress";
-      if (s === "on deck" || s === "next" || s === "up next" || s === "queued") return "On Deck";
-      if (s === "archived" || s === "cancelled" || s === "canceled" || s === "dropped") return "Archived";
-      if (s === "blocked" || s === "waiting" || s === "on hold") return "Blocked";
-      if (!raw || s === "to do" || s === "todo" || s === "not started" || s === "open" || s === "backlog") return "To Do";
-      return raw; // keep whatever the user has if it doesn't match
+      if (/\b(done|complet\w*|finish\w*|closed?)\b/.test(s)) return "Done";
+      if (/\b(archiv\w*|cancel\w*|drop+ed?)\b/.test(s))      return "Archived";
+      if (/\b(in.?progress|doing|wip|active|started)\b/.test(s)) return "In Progress";
+      if (/\b(on.?deck|up.?next|next|queue\w*)\b/.test(s))   return "On Deck";
+      if (/\b(blocked?|waiting|on.?hold|stuck)\b/.test(s))   return "Blocked";
+      if (!raw || /\b(to.?do|todo|not.?started|open|backlog)\b/.test(s)) return "To Do";
+      return raw;
     }
 
     const tasks = (data.results ?? []).map((page: any, i: number) => {
@@ -133,7 +133,7 @@ router.get("/tasks", async (req: Request, res: Response) => {
         : "";
       const rawStatus = prop(page, "Status") || prop(page, "Stage") || prop(page, "State") || "To Do";
       const status = normalizeStatus(String(rawStatus));
-      if (status === "Archived") return null;
+      if (status === "Archived" || status === "Done") return null;
       return {
         id: i + 1,
         notionId: page.id,

@@ -390,11 +390,11 @@ function PrioritiesPanel({ tasks = [], setTasks, loading }: {
     }
   }
 
-  const ACTIVE = new Set(["To Do", "In Progress", "On Deck"]);
+  // Deny-list: hide anything that looks done/complete/archived regardless of exact Notion label
+  const HIDE_RE = /done|complet|finish|archiv|cancel|closed?|dropped?/i;
 
-  // Keep only active-status tasks (exclude Done/Archived), sorted by due date, limit to 10
   const visible = tasks
-    .filter(t => ACTIVE.has(t.status))
+    .filter(t => !HIDE_RE.test(t.status))
     .slice(0, 10);
 
   return (
