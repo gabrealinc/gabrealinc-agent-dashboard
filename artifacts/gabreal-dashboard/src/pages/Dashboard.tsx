@@ -2016,7 +2016,13 @@ export default function Dashboard() {
   return (
     <div>
       <nav className="nav">
-        <div className="nav-brand">Gabreal Command Center</div>
+        <div className="nav-top">
+          <div className="nav-brand">Gab Real Inc</div>
+          <div className="nav-top-right">
+            <SageChatWidget />
+            <div className="nav-date">{formatDate()}</div>
+          </div>
+        </div>
         <div className="nav-tabs">
           {VIEWS.map(v => (
             <button
@@ -2027,10 +2033,6 @@ export default function Dashboard() {
               {v.label}
             </button>
           ))}
-        </div>
-        <div className="nav-right">
-          <SageChatWidget />
-          <div className="nav-date">{formatDate()}</div>
         </div>
       </nav>
 
