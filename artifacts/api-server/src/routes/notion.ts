@@ -283,14 +283,17 @@ router.get("/comms", async (req: Request, res: Response) => {
 
     const data = await queryDb(connectors, dbId, {
       filter: {
-        or: [
+        and: [
           { property: "Status", select: { does_not_equal: "Done" } },
           { property: "Status", select: { does_not_equal: "Archived" } },
           { property: "Status", select: { does_not_equal: "Dismissed" } },
+          { property: "Status", select: { does_not_equal: "Complete" } },
+          { property: "Status", select: { does_not_equal: "Completed" } },
+          { property: "Status", select: { does_not_equal: "Resolved" } },
         ],
       },
       sorts: [{ timestamp: "created_time", direction: "descending" }],
-      page_size: 20,
+      page_size: 50,
     });
 
     const items = (data.results ?? []).map((page: any) => {

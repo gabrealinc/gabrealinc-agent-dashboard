@@ -606,6 +606,7 @@ function HomeView() {
   const [scheduleLoading, setScheduleLoading] = useState(true);
   const [comms, setComms] = useState<CommItem[]>(COMMS_MOCK);
   const [commsLoading, setCommsLoading] = useState(true);
+  const [commsFromNotion, setCommsFromNotion] = useState(false);
   const [commsFilter, setCommsFilter] = useState<"all" | "urgent" | "action" | "fyi">("all");
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
@@ -650,9 +651,11 @@ function HomeView() {
     setCommsLoading(true);
     try {
       const data = await apiFetch<{ items: CommItem[] }>("/notion/comms");
-      if (data.items?.length) setComms(data.items);
+      // Always replace with Notion data — empty array means all clear
+      setComms(data.items ?? []);
+      setCommsFromNotion(true);
     } catch {
-      // keep mock
+      // keep mock on error (Notion unreachable / not configured)
     } finally {
       setCommsLoading(false);
     }
@@ -755,7 +758,13 @@ function HomeView() {
               <div>
                 <div className="card-label">Needs Your Attention</div>
                 <div className="card-subtitle" style={{ marginBottom: 0 }}>
-                  {commsLoading ? "Syncing from Notion Comms Log…" : `${visible.length} item${visible.length !== 1 ? "s" : ""} · synced at ${formatTime()}`}
+                  {commsLoading
+                    ? "Syncing from Notion Comms Log…"
+                    : commsFromNotion
+                      ? visible.length === 0
+                        ? `All clear · synced at ${formatTime()}`
+                        : `${visible.length} outstanding · synced at ${formatTime()}`
+                      : `${visible.length} item${visible.length !== 1 ? "s" : ""}`}
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -770,8 +779,12 @@ function HomeView() {
             </div>
 
             {filtered.length === 0 ? (
-              <div style={{ padding: "24px 0", textAlign: "center", color: "var(--text-xsoft)", fontFamily: "Inter, sans-serif", fontSize: 14 }}>
-                {commsLoading ? "Loading…" : "All clear — nothing needs your attention right now."}
+              <div style={{ padding: "32px 0", textAlign: "center", color: "var(--text-xsoft)", fontFamily: "Inter, sans-serif", fontSize: 14, lineHeight: 1.6 }}>
+                {commsLoading
+                  ? "Loading…"
+                  : commsFromNotion
+                    ? <>✓ Nothing needs your attention right now.</>
+                    : "All clear — nothing needs your attention right now."}
               </div>
             ) : (
               <div className="attention-grid">
