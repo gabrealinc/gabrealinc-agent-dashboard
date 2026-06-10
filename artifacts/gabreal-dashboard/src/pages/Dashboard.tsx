@@ -321,34 +321,14 @@ function InvoiceStatus({ s }: { s: string }) {
 }
 
 // ─── Priorities panel ─────────────────────────────────────────────────────────
-function PrioritiesPanel() {
-  const [tasks, setTasks] = useState<Task[]>(
-    [...TASKS_SEED].sort((a, b) => a.sortDate.localeCompare(b.sortDate))
-  );
+function PrioritiesPanel({ tasks = [], setTasks, loading }: {
+  tasks?: Task[];
+  setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
+  loading: boolean;
+}) {
   const [expanded, setExpanded] = useState<number | null>(null);
   const [syncing, setSyncing] = useState<number | null>(null);
   const [syncError, setSyncError] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [lastSynced, setLastSynced] = useState<string>(formatTime());
-  const dbId = import.meta.env.VITE_NOTION_TASKS_DB_ID;
-
-  async function loadTasks() {
-    setLoading(true);
-    try {
-      const url = dbId ? `/notion/tasks?db=${encodeURIComponent(dbId)}` : "/notion/tasks";
-      const data = await apiFetch<{ tasks: Task[] }>(url);
-      if (data.tasks?.length) {
-        setTasks(data.tasks.sort((a, b) => a.sortDate.localeCompare(b.sortDate)));
-        setLastSynced(formatTime());
-      }
-    } catch {
-      // silently keep mock data
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => { loadTasks(); }, []);
 
   function toggleExpand(id: number) {
     setExpanded(prev => prev === id ? null : id);
@@ -385,8 +365,8 @@ function PrioritiesPanel() {
 
   return (
     <>
-      {loading && tasks === TASKS_SEED.sort() && (
-        <div style={{ fontSize: 12, color: "var(--text-xsoft)", padding: "4px 0 8px" }}>Loading from Notion…</div>
+      {loading && (
+        <div style={{ fontSize: 12, color: "var(--text-xsoft)", padding: "4px 0 8px" }}>Syncing from Notion…</div>
       )}
       {visible.map(t => (
         <div key={t.id}>
@@ -579,6 +559,28 @@ function HomeView() {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
+  // ── Tasks (shared by PrioritiesPanel and QuickStats) ──────────────────────
+  const [tasks, setTasks] = useState<Task[]>(
+    [...TASKS_SEED].sort((a, b) => a.sortDate.localeCompare(b.sortDate))
+  );
+  const [tasksLoading, setTasksLoading] = useState(true);
+  const [tasksNotionDbUrl, setTasksNotionDbUrl] = useState("");
+
+  async function loadTasks() {
+    setTasksLoading(true);
+    try {
+      const data = await apiFetch<{ tasks: Task[]; notionDbUrl?: string }>("/notion/tasks");
+      if (data.tasks?.length) {
+        setTasks(data.tasks.sort((a, b) => a.sortDate.localeCompare(b.sortDate)));
+      }
+      if (data.notionDbUrl) setTasksNotionDbUrl(data.notionDbUrl);
+    } catch {
+      // keep seed data
+    } finally {
+      setTasksLoading(false);
+    }
+  }
+
   async function loadSchedule() {
     setScheduleLoading(true);
     try {
@@ -612,7 +614,7 @@ function HomeView() {
     }
   }
 
-  useEffect(() => { loadSchedule(); loadComms(); }, []);
+  useEffect(() => { loadSchedule(); loadComms(); loadTasks(); }, []);
 
   return (
     <div>
@@ -656,13 +658,23 @@ function HomeView() {
           <div className="card">
             <div className="card-header">
               <div>
-                <div className="card-label">This Week's Priorities</div>
-                <div className="card-subtitle" style={{ marginBottom: 0 }}>active tasks only · synced at {formatTime()}</div>
+                <div className="card-label">
+                  This Week's Priorities
+                  {tasksNotionDbUrl && (
+                    <a href={tasksNotionDbUrl} target="_blank" rel="noopener noreferrer"
+                      style={{ fontSize: 11, color: "var(--accent)", textDecoration: "none", fontWeight: 500, marginLeft: 8 }}>
+                      Open in Notion ↗
+                    </a>
+                  )}
+                </div>
+                <div className="card-subtitle" style={{ marginBottom: 0 }}>
+                  {tasksLoading ? "syncing from Notion…" : `${tasks.filter(t => ["To Do","In Progress","On Deck"].includes(t.status)).length} active tasks`}
+                </div>
               </div>
-              <RefreshBtn />
+              <RefreshBtn onClick={loadTasks} />
             </div>
             <div className="home-grid-scroll">
-              <PrioritiesPanel />
+              <PrioritiesPanel tasks={tasks} setTasks={setTasks} loading={tasksLoading} />
             </div>
           </div>
         </div>
@@ -763,10 +775,10 @@ function HomeView() {
         const weekEnd = isoDate(addDays(weekStart(today), 6));
         const monthStr = today.toLocaleString("en-US", { month: "short" }); // "Jun"
 
-        const overdue  = TASKS_SEED.filter(t => t.sortDate < todayISO && t.status !== "Done").length;
-        const dueToday = TASKS_SEED.filter(t => t.sortDate === todayISO && t.status !== "Done").length;
-        const dueWeek  = TASKS_SEED.filter(t => t.sortDate > todayISO && t.sortDate <= weekEnd && t.status !== "Done").length;
-        const dueMonth = TASKS_SEED.filter(t => t.sortDate.startsWith(`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}`) && t.status !== "Done").length;
+        const overdue  = tasks.filter(t => t.sortDate < todayISO && t.status !== "Done").length;
+        const dueToday = tasks.filter(t => t.sortDate === todayISO && t.status !== "Done").length;
+        const dueWeek  = tasks.filter(t => t.sortDate > todayISO && t.sortDate <= weekEnd && t.status !== "Done").length;
+        const dueMonth = tasks.filter(t => t.sortDate.startsWith(`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}`) && t.status !== "Done").length;
 
         const parseAmt = (s: string) => Number(s.replace(/[$,]/g, ""));
         const monthInvoices = INVOICES.filter(inv => inv.date.startsWith(monthStr));

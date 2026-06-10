@@ -72,37 +72,86 @@ router.get("/databases", async (req: Request, res: Response) => {
 });
 
 // ─── GET /api/notion/tasks?db=<database_id> ──────────────────────────────────
+// Auto-discovers the Tasks database by name if NOTION_TASKS_DB_ID not set.
 router.get("/tasks", async (req: Request, res: Response) => {
-  const dbId = (req.query.db as string) || DEFAULT_TASKS_DB;
   try {
     const connectors = getConnectors();
-    const data = await queryDb(connectors, dbId, {
-      sorts: [{ property: "Due Date", direction: "ascending" }],
-    });
+
+    let dbId = (req.query.db as string) || process.env.NOTION_TASKS_DB_ID || DEFAULT_TASKS_DB;
+    let dbUrl: string | undefined;
+
+    // Auto-discover by searching for a database with "Task" in the title
+    if (!process.env.NOTION_TASKS_DB_ID && !(req.query.db as string)) {
+      const searchRes = await connectors.proxy("notion", "/v1/search", {
+        method: "POST",
+        body: JSON.stringify({ query: "Tasks", filter: { value: "database", property: "object" } }),
+        headers: { "Content-Type": "application/json" },
+      });
+      const searchData = await searchRes.json();
+      const found = (searchData.results ?? []).find((db: any) => {
+        const title = (db.title ?? []).map((t: any) => t.plain_text).join("").toLowerCase();
+        return title.includes("task");
+      });
+      if (found) { dbId = found.id; dbUrl = found.url; }
+    }
+
+    if (!dbUrl) dbUrl = `https://notion.so/${dbId.replace(/-/g, "")}`;
+
+    // Try sorting by Due Date; fall back to last_edited_time if the property doesn't exist
+    let data: any;
+    try {
+      data = await queryDb(connectors, dbId, {
+        sorts: [{ property: "Due Date", direction: "ascending" }],
+        page_size: 100,
+      });
+    } catch {
+      data = await queryDb(connectors, dbId, {
+        sorts: [{ timestamp: "last_edited_time", direction: "descending" }],
+        page_size: 100,
+      });
+    }
+
+    // Normalize common Notion status variants to dashboard-standard values
+    function normalizeStatus(raw: string): string {
+      const s = raw.toLowerCase().trim();
+      if (s === "done" || s === "complete" || s === "completed" || s === "finished") return "Done";
+      if (s === "in progress" || s === "in-progress" || s === "doing" || s === "wip" || s === "active") return "In Progress";
+      if (s === "on deck" || s === "next" || s === "up next" || s === "queued") return "On Deck";
+      if (s === "archived" || s === "cancelled" || s === "canceled" || s === "dropped") return "Archived";
+      if (s === "blocked" || s === "waiting" || s === "on hold") return "Blocked";
+      if (!raw || s === "to do" || s === "todo" || s === "not started" || s === "open" || s === "backlog") return "To Do";
+      return raw; // keep whatever the user has if it doesn't match
+    }
 
     const tasks = (data.results ?? []).map((page: any, i: number) => {
-      const dueRaw = prop(page, "Due Date") || prop(page, "Start Date") || prop(page, "Date") || prop(page, "Due") || "";
+      const dueRaw =
+        prop(page, "Due Date") || prop(page, "Due") || prop(page, "Date") ||
+        prop(page, "Start Date") || prop(page, "Deadline") || "";
       const due = dueRaw ? new Date(dueRaw) : null;
       const dateDisplay = due
         ? due.toLocaleDateString("en-US", { month: "short", day: "numeric" })
         : "";
-      const status = prop(page, "Status") || "To Do";
-      // Skip archived/done items older than 7 days
+      const rawStatus = prop(page, "Status") || prop(page, "Stage") || prop(page, "State") || "To Do";
+      const status = normalizeStatus(String(rawStatus));
       if (status === "Archived") return null;
       return {
         id: i + 1,
         notionId: page.id,
-        name: prop(page, "Task") || prop(page, "Name") || prop(page, "Title") || "(untitled)",
+        name:
+          prop(page, "Task") || prop(page, "Name") || prop(page, "Title") ||
+          prop(page, "To-do") || "(untitled)",
         date: dateDisplay,
         sortDate: (dueRaw || "9999-12-31").slice(0, 10),
         status,
-        client: prop(page, "Client Name") || prop(page, "Client") || prop(page, "Project Name") || prop(page, "Project") || prop(page, "Account") || prop(page, "Company") || "",
-        notes: prop(page, "Notes") || prop(page, "Description") || "",
+        client:
+          prop(page, "Client Name") || prop(page, "Client") || prop(page, "Project Name") ||
+          prop(page, "Project") || prop(page, "Account") || prop(page, "Company") || "",
+        notes: prop(page, "Notes") || prop(page, "Description") || prop(page, "Details") || "",
         notionUrl: page.url,
       };
     }).filter(Boolean);
 
-    return res.json({ tasks });
+    return res.json({ tasks, notionDbUrl: dbUrl });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }
