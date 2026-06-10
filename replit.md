@@ -41,10 +41,10 @@ A personal operating system for Gabby — command center dashboard covering sche
 A personal command center for Gabby (Gab Real Inc) with:
 - **Home**: Today's schedule, inbox attention items (from Amber agent), Sage chat, task priorities, Mac Mini remote control
 - **Clients**: Active client roster synced from Notion
-- **Finance**: Revenue stats, monthly chart, invoice tracker (via Milli agent / QuickBooks + GHL)
+- **Finance**: Revenue stats, monthly chart, invoice tracker (via Dave agent / QuickBooks + GHL)
 - **Intelligence**: AI-curated industry briefs (via Nancy agent)
 - **Substack**: Newsletter writing and publishing interface (Notion-backed)
-- **Spirit**: Cycle-phase wellness guidance (via Liala agent)
+- **Spirit**: Cycle-phase wellness guidance (via Elle agent)
 - **Agents**: Status and activity log for all 8 AI agents, Mac Mini wake/screen-share controls
 
 ## Secrets needed

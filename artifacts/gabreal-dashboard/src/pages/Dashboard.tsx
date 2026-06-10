@@ -226,7 +226,7 @@ const AGENTS: Agent[] = [
     },
   },
   {
-    name: "Liala", role: "Spirit Team", status: "active",
+    name: "Elle", role: "Highest Self + Wellness", status: "active",
     desc: "Daily morning ritual — cycle phase guidance, meals, movement, nervous system support, and spiritual practice.",
     last: "7:00 AM · Day 22 Luteal",
     report: {
@@ -252,7 +252,7 @@ const AGENTS: Agent[] = [
     },
   },
   {
-    name: "Milli", role: "Finance Watchdog", status: "scheduled",
+    name: "Dave", role: "CFO", status: "scheduled",
     desc: "QuickBooks, Gusto, GHL, Stripe — monitors business and personal finances, flags overdue invoices and tax deadlines.",
     last: "7:45 AM · 1 flag: $5,000 pending",
     report: {
@@ -291,7 +291,7 @@ const AGENTS: Agent[] = [
     },
   },
   {
-    name: "Lennard", role: "Legal / HR", status: "idle",
+    name: "Lenny", role: "Legal / HR", status: "idle",
     desc: "Weekly legal, tax, and HR compliance check — CA filings, payroll, contracts, IRS deadlines. Runs Tuesdays.",
     last: "Tuesday · All clear",
     report: {
@@ -307,7 +307,7 @@ const AGENTS: Agent[] = [
 
 const ACTIVITY_LOG = [
   { time: "8:02 AM", color: "#60C070", text: <><strong>Sage</strong> — Morning brief delivered to Slack · 4 meetings, 3 priority tasks, 1 opportunity flagged</> },
-  { time: "7:45 AM", color: "#E8C040", text: <><strong>Milli</strong> — Finance check complete · $5,000 LACES invoice pending 4 days, flagged to dashboard</> },
+  { time: "7:45 AM", color: "#E8C040", text: <><strong>Dave</strong> — Finance check complete · $5,000 LACES invoice pending 4 days, flagged to dashboard</> },
   { time: "7:30 AM", color: "#60C070", text: <><strong>Nancy</strong> — Intelligence brief ready · 3 items surfaced, 1 opportunity flagged</> },
   { time: "6:45 AM", color: "#60C070", text: <><strong>Mae</strong> — Morning audit complete · All systems nominal, no issues found</> },
 ];
@@ -889,9 +889,9 @@ function HomeView() {
         );
       })()}
 
-      {/* Full-width Liala */}
+      {/* Full-width Elle */}
       <div className="card" style={{ cursor: "pointer" }}>
-        <div className="card-label" style={{ color: "#9060C0" }}>Liala · Spirit Team</div>
+        <div className="card-label" style={{ color: "#9060C0" }}>Elle · Highest Self + Wellness</div>
         <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, marginBottom: 6, letterSpacing: "-0.3px" }}>Soft Power</div>
         <div style={{ fontSize: 13, color: "var(--text-soft)", fontStyle: "italic", lineHeight: 1.6 }}>You're in your luteal phase — the time of the wise woman. Your energy turns inward today. Finish what's already in motion.</div>
       </div>
@@ -1066,7 +1066,7 @@ function NewClientModal({ onClose }: { onClose: () => void }) {
         <div className="modal-header">
           <div>
             <div className="modal-title">New Client</div>
-            <div className="modal-sub">Creates a new page in your Notion CRM · powered by Milli</div>
+            <div className="modal-sub">Creates a new page in your Notion CRM · powered by Dave</div>
           </div>
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
@@ -1307,7 +1307,7 @@ function FinanceView() {
     <div>
       <div className="page-header">
         <h1 className="page-greeting">Finance</h1>
-        <p className="page-subtitle">Revenue, invoices, and financial health · powered by Milli</p>
+        <p className="page-subtitle">Revenue, invoices, and financial health · powered by Dave</p>
       </div>
 
       <div className="three-col" style={{ marginBottom: 16 }}>

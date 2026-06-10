@@ -49,7 +49,7 @@ const DEFAULT_EVENTS: CalEvent[] = [
   seed("2026-06-10", "e8", { title: "Content Planning", startTime: "09:00", endTime: "10:00", color: "#E8EAF6", notes: "Social calendar for LACES + Bluebell" }),
   seed("2026-06-10", "e9", { title: "Bluebell Content Review", startTime: "13:00", endTime: "14:00", color: "#FFCDD2", meetingLink: "https://zoom.us/j/55443322", attendees: "Sarah Chen" }),
   seed("2026-06-11", "e10", { title: "Morning Routine", startTime: "06:00", endTime: "07:30", color: "#C8E6C9" }),
-  seed("2026-06-11", "e11", { title: "Lennard Legal Check", startTime: "08:00", endTime: "09:00", color: "#F3E5F5", notes: "Weekly compliance review" }),
+  seed("2026-06-11", "e11", { title: "Lenny Legal Check", startTime: "08:00", endTime: "09:00", color: "#F3E5F5", notes: "Weekly compliance review" }),
   seed("2026-06-11", "e12", { title: "Issa Rae Campaign Kickoff", startTime: "11:00", endTime: "12:30", color: "#FFE0B2", meetingLink: "https://meet.google.com/xyz-uvw-rst", attendees: "Issa Rae, Campaign Team", notes: "New campaign brief" }),
   seed("2026-06-12", "e13", { title: "Morning Routine", startTime: "06:00", endTime: "07:30", color: "#C8E6C9" }),
   seed("2026-06-12", "e14", { title: "Substack Writing Block", startTime: "09:00", endTime: "11:00", color: "#E0F7FA", location: "Home Office", notes: "Finish 'Soft Power Issue'" }),
