@@ -298,6 +298,68 @@ router.post("/comms/:id/dismiss", async (req: Request, res: Response) => {
   }
 });
 
+// ─── GET /api/notion/substack — list posts from "Substacks" database ─────────
+// Auto-discovers the database by searching for "Substack" in the title.
+router.get("/substack", async (req: Request, res: Response) => {
+  try {
+    const connectors = getConnectors();
+
+    let dbId = (req.query.db as string) || process.env.NOTION_SUBSTACK_DB_ID;
+    let dbUrl: string | undefined;
+
+    if (!dbId) {
+      const searchRes = await connectors.proxy("notion", "/v1/search", {
+        method: "POST",
+        body: JSON.stringify({ query: "Substack", filter: { value: "database", property: "object" } }),
+        headers: { "Content-Type": "application/json" },
+      });
+      const searchData = await searchRes.json();
+      const found = (searchData.results ?? []).find((db: any) => {
+        const title = (db.title ?? []).map((t: any) => t.plain_text).join("").toLowerCase();
+        return title.includes("substack");
+      });
+      if (found) { dbId = found.id; dbUrl = found.url; }
+    }
+
+    if (!dbId) {
+      return res.status(404).json({ error: "Substacks database not found. Set NOTION_SUBSTACK_DB_ID or name the database with 'Substack' in the title." });
+    }
+
+    if (!dbUrl) dbUrl = `https://notion.so/${dbId.replace(/-/g, "")}`;
+
+    const data = await queryDb(connectors, dbId, {
+      sorts: [{ timestamp: "last_edited_time", direction: "descending" }],
+      page_size: 50,
+    });
+
+    const posts = (data.results ?? []).map((page: any, i: number) => {
+      // Body: try to pull from a rich_text "Body" / "Content" property first;
+      // full page content requires a blocks fetch (expensive) so we omit for now.
+      const bodyProp = prop(page, "Body") || prop(page, "Content") || prop(page, "Notes") || prop(page, "Description") || "";
+      const dateRaw = prop(page, "Published Date") || prop(page, "Publish Date") || prop(page, "Date") || page.last_edited_time || "";
+      const dateDisplay = dateRaw ? new Date(dateRaw).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "";
+
+      return {
+        id: page.id,
+        notionUrl: page.url,
+        title: prop(page, "Name") || prop(page, "Title") || "(untitled)",
+        subtitle: prop(page, "Subtitle") || prop(page, "Tagline") || prop(page, "Hook") || "",
+        status: prop(page, "Status") || prop(page, "Stage") || "Draft",
+        date: dateDisplay,
+        body: bodyProp,
+        tags: (() => {
+          const raw = prop(page, "Tags") || prop(page, "Topics") || prop(page, "Category") || "";
+          return String(raw).split(",").map((s: string) => s.trim()).filter(Boolean);
+        })(),
+      };
+    });
+
+    return res.json({ posts, notionDbUrl: dbUrl });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── POST /api/notion/clients — create a new client page ─────────────────────
 router.post("/clients", async (req: Request, res: Response) => {
   const dbId = (req.body?.db as string) || process.env.NOTION_CLIENTS_DB_ID;

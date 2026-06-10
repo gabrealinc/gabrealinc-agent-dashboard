@@ -1492,8 +1492,14 @@ function IntelligenceView() {
 }
 
 // ─── View: SUBSTACK ───────────────────────────────────────────────────────────
+type SubstackPost = { id: string | number; title: string; subtitle: string; status: string; date: string; body: string; tags: string[]; notionUrl?: string };
+
 function SubstackView() {
-  const [selected, setSelected] = useState(SUBSTACK_POSTS[0]);
+  const [posts, setPosts] = useState<SubstackPost[]>(SUBSTACK_POSTS.map(p => ({ ...p, id: String(p.id), tags: [], notionUrl: "" })));
+  const [selected, setSelected] = useState<SubstackPost>(posts[0]);
+  const [loading, setLoading] = useState(true);
+  const [notionDbUrl, setNotionDbUrl] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
 
   const statusColors: Record<string, string> = {
     "In Progress": "pill-progress",
@@ -1503,25 +1509,65 @@ function SubstackView() {
     "Draft": "pill-todo",
   };
 
+  async function loadPosts() {
+    setLoading(true);
+    try {
+      const data = await apiFetch<{ posts: SubstackPost[]; notionDbUrl?: string }>("/notion/substack");
+      if (data.posts?.length) {
+        setPosts(data.posts);
+        setSelected(data.posts[0]);
+      }
+      if (data.notionDbUrl) setNotionDbUrl(data.notionDbUrl);
+    } catch {
+      // keep seed data
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { loadPosts(); }, []);
+
+  const statuses = ["All", ...Array.from(new Set(posts.map(p => p.status)))];
+  const filtered = statusFilter === "All" ? posts : posts.filter(p => p.status === statusFilter);
+
   return (
     <div>
       <div className="page-header">
-        <h1 className="page-greeting">Substack</h1>
-        <p className="page-subtitle">Write, edit, and publish your newsletter</p>
+        <div>
+          <h1 className="page-greeting">Substack</h1>
+          <p className="page-subtitle" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            Write, edit, and publish your newsletter
+            {notionDbUrl && (
+              <a href={notionDbUrl} target="_blank" rel="noopener noreferrer"
+                style={{ fontSize: 12, color: "var(--accent)", textDecoration: "none", fontWeight: 500 }}>
+                Open in Notion ↗
+              </a>
+            )}
+            {loading && <span style={{ fontSize: 11, color: "var(--text-xsoft)" }}>syncing…</span>}
+          </p>
+        </div>
+        <button className="ccv2-action-btn" onClick={loadPosts} disabled={loading} style={{ alignSelf: "flex-start" }}>
+          {loading ? "Refreshing…" : "↺ Refresh"}
+        </button>
       </div>
       <div className="substack-layout">
         <div className="post-list">
           <div className="post-list-header">
-            <span style={{ fontWeight: 600, fontSize: 14 }}>Posts</span>
-            <button className="btn btn-accent" style={{ fontSize: 11, padding: "4px 12px" }}>+ New</button>
+            <span style={{ fontWeight: 600, fontSize: 14 }}>Posts ({filtered.length})</span>
+            {selected?.notionUrl && (
+              <a href={selected.notionUrl} target="_blank" rel="noopener noreferrer"
+                className="ccv2-action-btn" style={{ fontSize: 11, textDecoration: "none" }}>
+                Open ↗
+              </a>
+            )}
           </div>
           <div className="filter-pills" style={{ padding: "10px 14px 0", flexWrap: "wrap", gap: 4 }}>
-            <button className="pill active" style={{ fontSize: 11 }}>All</button>
-            <button className="pill" style={{ fontSize: 11 }}>Draft</button>
-            <button className="pill" style={{ fontSize: 11 }}>Published</button>
+            {statuses.map(s => (
+              <button key={s} className={`pill ${statusFilter === s ? "active" : ""}`} style={{ fontSize: 11 }} onClick={() => setStatusFilter(s)}>{s}</button>
+            ))}
           </div>
-          {SUBSTACK_POSTS.map(p => (
-            <div key={p.id} className={`post-item ${selected.id === p.id ? "selected" : ""}`} onClick={() => setSelected(p)}>
+          {filtered.map(p => (
+            <div key={p.id} className={`post-item ${selected?.id === p.id ? "selected" : ""}`} onClick={() => setSelected(p)}>
               <div className="post-item-title">{p.title}</div>
               <div className="post-item-meta">
                 <span className={statusColors[p.status] || "pill-todo"} style={{ fontSize: 10, padding: "2px 8px" }}>{p.status}</span>
@@ -1531,19 +1577,33 @@ function SubstackView() {
           ))}
         </div>
         <div className="editor-panel">
-          <input className="editor-title" defaultValue={selected.title} key={`title-${selected.id}`} placeholder="Post title..." />
-          <input className="editor-subtitle" defaultValue={selected.subtitle} key={`sub-${selected.id}`} placeholder="Subtitle..." />
-          <div className="editor-toolbar">
-            {["B", "I", "H2", "Link", "Quote", "Bullets", "Numbers", "Image"].map(t => (
-              <button className="toolbar-btn" key={t}>{t}</button>
-            ))}
-          </div>
-          <textarea className="editor-body" defaultValue={selected.body} key={`body-${selected.id}`} placeholder="Start writing..." />
-          <div className="editor-actions">
-            <button className="btn btn-accent">Publish</button>
-            <button className="btn btn-approve">Schedule</button>
-            <button className="btn btn-dismiss">Save Draft</button>
-          </div>
+          {selected ? (
+            <>
+              <input className="editor-title" defaultValue={selected.title} key={`title-${selected.id}`} placeholder="Post title..." />
+              <input className="editor-subtitle" defaultValue={selected.subtitle} key={`sub-${selected.id}`} placeholder="Subtitle..." />
+              <div className="editor-toolbar">
+                {["B", "I", "H2", "Link", "Quote", "Bullets", "Numbers", "Image"].map(t => (
+                  <button className="toolbar-btn" key={t}>{t}</button>
+                ))}
+              </div>
+              <textarea className="editor-body" defaultValue={selected.body} key={`body-${selected.id}`} placeholder="Start writing..." />
+              <div className="editor-actions">
+                <button className="btn btn-accent">Publish</button>
+                <button className="btn btn-approve">Schedule</button>
+                <button className="btn btn-dismiss">Save Draft</button>
+                {selected.notionUrl && (
+                  <a href={selected.notionUrl} target="_blank" rel="noopener noreferrer"
+                    className="btn" style={{ fontSize: 12, textDecoration: "none", background: "var(--bg-soft)", color: "var(--text-soft)", border: "1px solid var(--border)" }}>
+                    Edit in Notion ↗
+                  </a>
+                )}
+              </div>
+            </>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--text-xsoft)", fontSize: 14 }}>
+              Select a post to edit
+            </div>
+          )}
         </div>
       </div>
     </div>
