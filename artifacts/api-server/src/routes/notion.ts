@@ -5,7 +5,7 @@ const router = Router();
 
 // Known Notion DB IDs (non-sensitive identifiers, safe to hardcode as fallbacks)
 const DEFAULT_TASKS_DB   = process.env.NOTION_TASKS_DB_ID   ?? "222a4fa7-7eaf-812b-8707-d4f1da02d778";
-const DEFAULT_CLIENTS_DB = process.env.NOTION_CLIENTS_DB_ID ?? "d3da4fa7-7eaf-82df-b0d8-014512d331ec";
+const DEFAULT_CLIENTS_DB = process.env.NOTION_CLIENTS_DB_ID ?? "222a4fa7-7eaf-812b-8707-d4f1da02d778";
 
 function getConnectors() {
   return new ReplitConnectors();

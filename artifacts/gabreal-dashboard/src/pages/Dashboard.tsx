@@ -42,6 +42,7 @@ type Task = {
   status: string;
   client: string;
   notes: string;
+  notionUrl?: string;
 };
 
 const STATUS_CYCLE: Record<string, string> = {
@@ -406,6 +407,20 @@ function PrioritiesPanel({ tasks = [], setTasks, loading }: {
                 <div className="task-detail-row task-detail-notes">
                   <span className="task-detail-label">Notes</span>
                   <span className="task-detail-value">{t.notes}</span>
+                </div>
+              )}
+              {t.notionUrl && (
+                <div className="task-detail-row" style={{ borderTop: "1px solid var(--border)", paddingTop: 8, marginTop: 4 }}>
+                  <a
+                    href={t.notionUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ccv2-action-btn"
+                    style={{ fontSize: 11, textDecoration: "none", display: "inline-block" }}
+                    onClick={e => e.stopPropagation()}
+                  >
+                    Open in Notion ↗
+                  </a>
                 </div>
               )}
               <div className="task-status-row">
