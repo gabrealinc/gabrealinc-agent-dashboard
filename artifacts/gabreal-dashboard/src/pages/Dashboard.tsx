@@ -25,8 +25,8 @@ function weekStart(d: Date) { const r = new Date(d); const day = r.getDay(); r.s
 // ─── Types ────────────────────────────────────────────────────────────────────
 type View = "home" | "clients" | "finance" | "intelligence" | "substack" | "spirit" | "agents";
 
-// ─── Static mock data (real data comes from Supabase once keys are configured) ─
-const SCHEDULE = [
+// ─── Static mock fallback data ────────────────────────────────────────────────
+const SCHEDULE_MOCK = [
   { time: "6:00 AM", event: "Morning Routine" },
   { time: "10:00 AM", event: "LACES Strategy Call" },
   { time: "2:30 PM", event: "Ryan Lands" },
@@ -285,6 +285,18 @@ const SUBSTACK_POSTS = [
   { id: 4, title: "Brand Before Strategy", status: "Idea", date: "May 10", subtitle: "", body: "" },
 ];
 
+// ─── API helpers ──────────────────────────────────────────────────────────────
+const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
+
+async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
+  const res = await fetch(`${BASE}/api${path}`, {
+    headers: { "Content-Type": "application/json" },
+    ...opts,
+  });
+  if (!res.ok) throw new Error(`API ${path} → ${res.status}`);
+  return res.json() as Promise<T>;
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 function RefreshBtn({ onClick }: { onClick?: () => void }) {
   return <button className="refresh-btn" onClick={onClick} title="Refresh">↻</button>;
@@ -312,6 +324,27 @@ function PrioritiesPanel() {
   const [expanded, setExpanded] = useState<number | null>(null);
   const [syncing, setSyncing] = useState<number | null>(null);
   const [syncError, setSyncError] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [lastSynced, setLastSynced] = useState<string>(formatTime());
+  const dbId = import.meta.env.VITE_NOTION_TASKS_DB_ID;
+
+  async function loadTasks() {
+    setLoading(true);
+    try {
+      const url = dbId ? `/notion/tasks?db=${encodeURIComponent(dbId)}` : "/notion/tasks";
+      const data = await apiFetch<{ tasks: Task[] }>(url);
+      if (data.tasks?.length) {
+        setTasks(data.tasks.sort((a, b) => a.sortDate.localeCompare(b.sortDate)));
+        setLastSynced(formatTime());
+      }
+    } catch {
+      // silently keep mock data
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { loadTasks(); }, []);
 
   function toggleExpand(id: number) {
     setExpanded(prev => prev === id ? null : id);
@@ -324,12 +357,13 @@ function PrioritiesPanel() {
     setSyncing(task.id);
     setSyncError(null);
     try {
-      const res = await fetch("/api/update-notion-task", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notionId: task.notionId, status: next }),
-      });
-      if (!res.ok) throw new Error("not ok");
+      // if it's a real Notion ID (UUID format), patch it
+      if (task.notionId && !task.notionId.startsWith("task-")) {
+        await apiFetch(`/notion/tasks/${task.notionId}`, {
+          method: "PATCH",
+          body: JSON.stringify({ status: next }),
+        });
+      }
     } catch {
       setSyncError(task.id);
       setTimeout(() => setSyncError(null), 2500);
@@ -340,6 +374,9 @@ function PrioritiesPanel() {
 
   return (
     <div style={{ marginTop: 10 }}>
+      {loading && tasks === TASKS_SEED.sort() && (
+        <div style={{ fontSize: 12, color: "var(--text-xsoft)", padding: "8px 0" }}>Loading from Notion…</div>
+      )}
       {tasks.map(t => (
         <div key={t.id}>
           <div
@@ -392,12 +429,10 @@ function PrioritiesPanel() {
                         setTasks(prev => prev.map(x => x.id === t.id ? { ...x, status: next } : x));
                         setSyncing(t.id);
                         setSyncError(null);
-                        fetch("/api/update-notion-task", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ notionId: t.notionId, status: next }),
-                        }).then(r => { if (!r.ok) throw new Error(); })
-                          .catch(() => { setSyncError(t.id); setTimeout(() => setSyncError(null), 2500); })
+                        apiFetch(`/notion/tasks/${t.notionId}`, {
+                          method: "PATCH",
+                          body: JSON.stringify({ status: next }),
+                        }).catch(() => { setSyncError(t.id); setTimeout(() => setSyncError(null), 2500); })
                           .finally(() => setSyncing(null));
                       }
                     }}
@@ -494,6 +529,24 @@ function HomeView() {
   const [calOpen, setCalOpen] = useState(false);
   const closeCalendar = useCallback(() => setCalOpen(false), []);
   const [agentQuickView, setAgentQuickView] = useState<Agent | null>(null);
+  const [schedule, setSchedule] = useState<{ time: string; event: string }[]>(SCHEDULE_MOCK);
+  const [scheduleLoading, setScheduleLoading] = useState(true);
+
+  async function loadSchedule() {
+    setScheduleLoading(true);
+    try {
+      const data = await apiFetch<{ events: { timeDisplay: string; title: string }[] }>("/gcal/events?days=1");
+      if (data.events?.length) {
+        setSchedule(data.events.map(e => ({ time: e.timeDisplay, event: e.title })));
+      }
+    } catch {
+      // keep mock
+    } finally {
+      setScheduleLoading(false);
+    }
+  }
+
+  useEffect(() => { loadSchedule(); }, []);
 
   return (
     <div>
@@ -509,9 +562,12 @@ function HomeView() {
               <div>
                 <div className="card-label">Today's Schedule</div>
               </div>
-              <RefreshBtn />
+              <RefreshBtn onClick={loadSchedule} />
             </div>
-            {SCHEDULE.map((s, i) => (
+            {scheduleLoading && schedule === SCHEDULE_MOCK && (
+              <div style={{ fontSize: 12, color: "var(--text-xsoft)", padding: "8px 0" }}>Loading from Google Calendar…</div>
+            )}
+            {schedule.map((s, i) => (
               <div className="schedule-item" key={i}>
                 <span className="schedule-time">{s.time}</span>
                 <span className="schedule-name">{s.event}</span>
@@ -822,16 +878,20 @@ function NewClientModal({ onClose }: { onClose: () => void }) {
     setSaving(true);
     setError("");
     try {
-      const res = await fetch("/api/create-notion-client", {
+      await apiFetch("/notion/clients", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          type: form.services.join(", "),
+          db: import.meta.env.VITE_NOTION_CLIENTS_DB_ID,
+        }),
       });
-      if (!res.ok) throw new Error("API error");
       setSaved(true);
       setTimeout(onClose, 2000);
-    } catch {
-      setError("Could not create in Notion — configure SUPABASE_URL to connect live data.");
+    } catch (err: any) {
+      setError(err?.message?.includes("database ID")
+        ? "Set VITE_NOTION_CLIENTS_DB_ID in Replit Secrets to create clients in Notion."
+        : "Could not create in Notion. Please try again.");
       setSaving(false);
     }
   }
@@ -926,12 +986,30 @@ function NewClientModal({ onClose }: { onClose: () => void }) {
 function ClientsView() {
   const [filter, setFilter] = useState<"all" | "Active" | "Needs Attention" | "Paused">("all");
   const [showNewClient, setShowNewClient] = useState(false);
+  const [clients, setClients] = useState(CLIENTS);
+  const [clientsLoading, setClientsLoading] = useState(true);
+  const dbId = import.meta.env.VITE_NOTION_CLIENTS_DB_ID;
 
-  const filtered = filter === "all" ? CLIENTS : CLIENTS.filter(c => c.status === filter);
-  const activeClients = CLIENTS.filter(c => c.status === "Active");
-  const monthlyRetainer = activeClients.filter(c => c.valueLabel === "monthly").reduce((s, c) => s + c.value, 0);
-  const totalDeliverables = CLIENTS.reduce((s, c) => s + c.deliverables, 0);
-  const nextMtg = CLIENTS.find(c => c.nextMeeting !== "—");
+  async function loadClients() {
+    setClientsLoading(true);
+    try {
+      const url = dbId ? `/notion/clients?db=${encodeURIComponent(dbId)}` : "/notion/clients";
+      const data = await apiFetch<{ clients: typeof CLIENTS }>(url);
+      if (data.clients?.length) setClients(data.clients);
+    } catch {
+      // keep mock
+    } finally {
+      setClientsLoading(false);
+    }
+  }
+
+  useEffect(() => { loadClients(); }, []);
+
+  const filtered = filter === "all" ? clients : clients.filter(c => c.status === filter);
+  const activeClients = clients.filter(c => c.status === "Active");
+  const monthlyRetainer = activeClients.filter(c => c.valueLabel === "monthly").reduce((s, c) => s + Number(c.value), 0);
+  const totalDeliverables = clients.reduce((s, c) => s + (c.deliverables ?? 0), 0);
+  const nextMtg = clients.find(c => c.nextMeeting !== "—");
 
   const AVATAR_COLORS = ["#E8A040", "#9060C0", "#60A878", "#C06060", "#4080C0"];
 
@@ -947,7 +1025,7 @@ function ClientsView() {
         <div className="stat-card">
           <div className="stat-label">Active Clients</div>
           <div className="stat-value">{activeClients.length}</div>
-          <div className="stat-sub">{CLIENTS.length} total</div>
+          <div className="stat-sub">{clients.length} total</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">Monthly Retainer</div>
@@ -971,7 +1049,7 @@ function ClientsView() {
         <div className="filter-pills">
           {(["all", "Active", "Needs Attention", "Paused"] as const).map(f => (
             <button key={f} className={`pill ${filter === f ? "active" : ""}`} onClick={() => setFilter(f)}>
-              {f === "all" ? `All (${CLIENTS.length})` : `${f} (${CLIENTS.filter(c => c.status === f).length})`}
+              {f === "all" ? `All (${clients.length})` : `${f} (${clients.filter(c => c.status === f).length})`}
             </button>
           ))}
         </div>
