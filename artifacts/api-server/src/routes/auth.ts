@@ -261,6 +261,32 @@ router.post(
   },
 );
 
+router.post("/auth/password-login", async (req: Request, res: Response) => {
+  const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD;
+  if (!DASHBOARD_PASSWORD) {
+    res.status(503).json({ error: "DASHBOARD_PASSWORD not configured" });
+    return;
+  }
+  const { password } = req.body ?? {};
+  if (!password || password !== DASHBOARD_PASSWORD) {
+    res.status(401).json({ error: "Incorrect password" });
+    return;
+  }
+  const sessionData: SessionData = {
+    user: {
+      id: "gabby",
+      email: null,
+      firstName: "Gabby",
+      lastName: null,
+      profileImageUrl: null,
+    },
+    access_token: "password-auth",
+  };
+  const sid = await createSession(sessionData);
+  setSessionCookie(res, sid);
+  res.json({ ok: true });
+});
+
 router.post("/mobile-auth/logout", async (req: Request, res: Response) => {
   const sid = getSessionId(req);
   if (sid) {
