@@ -20,15 +20,15 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: "var(--bg, #fdf6f0)" }}>
-        <p style={{ fontFamily: "var(--font-body, Inter, sans-serif)", color: "var(--text-muted, #9c7a6a)" }}>Loading…</p>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
+        <p style={{ fontFamily: "Inter, sans-serif", color: "#9c7a6a" }}>Loading…</p>
       </div>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", gap: "1.5rem", background: "var(--bg, #fdf6f0)" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", gap: "1.5rem" }}>
         <h1 style={{ fontFamily: "var(--font-heading, 'Playfair Display', serif)", fontSize: "2rem", color: "var(--text, #3d2c2c)" }}>Gabreal Command Center</h1>
         <button
           onClick={login}

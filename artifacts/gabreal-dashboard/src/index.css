@@ -34,14 +34,30 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+@keyframes fluid-bg {
+  0%   { background-position: 0% 25%; }
+  33%  { background-position: 75% 0%; }
+  66%  { background-position: 100% 75%; }
+  100% { background-position: 0% 25%; }
+}
+
 body {
   font-family: 'Inter', sans-serif;
-  background:
-    radial-gradient(ellipse 70% 60% at 5% 0%,   rgba(180,120,220,0.22) 0%, transparent 55%),
-    radial-gradient(ellipse 50% 55% at 95% 100%, rgba(232,160,64,0.18)  0%, transparent 55%),
-    radial-gradient(ellipse 55% 45% at 60% 40%,  rgba(200,150,240,0.07) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 40% at 30% 80%,  rgba(255,175,90,0.09)  0%, transparent 55%),
-    #F9EDF8;
+  /* Fluid peach gradient: deep coral → amber → golden → soft cream, drifting slowly */
+  background: linear-gradient(
+    135deg,
+    #E8826A 0%,
+    #F4A76A 12%,
+    #F7C47A 24%,
+    #FBE0B0 36%,
+    #F9D09A 48%,
+    #F0A878 60%,
+    #E87A64 72%,
+    #F7BE88 84%,
+    #FAE8C8 100%
+  );
+  background-size: 400% 400%;
+  animation: fluid-bg 16s ease-in-out infinite;
   color: var(--text);
   font-size: 14px;
   line-height: 1.5;
