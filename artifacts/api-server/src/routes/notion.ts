@@ -152,6 +152,112 @@ router.get("/clients", async (req: Request, res: Response) => {
   }
 });
 
+// ─── GET /api/notion/comms?db=<database_id> ──────────────────────────────────
+// Auto-discovers "Comms Log" database by name if NOTION_COMMS_DB_ID not set.
+function commsRelativeTime(dateStr: string): string {
+  const date = dateStr ? new Date(dateStr) : new Date();
+  const diff = Date.now() - date.getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}hr ago`;
+  const days = Math.floor(hrs / 24);
+  return days === 1 ? "yesterday" : `${days} days ago`;
+}
+
+router.get("/comms", async (req: Request, res: Response) => {
+  try {
+    const connectors = getConnectors();
+
+    let dbId = (req.query.db as string) || process.env.NOTION_COMMS_DB_ID;
+
+    // Auto-discover by searching for "Comms" database title
+    if (!dbId) {
+      const searchRes = await connectors.proxy("notion", "/v1/search", {
+        method: "POST",
+        body: JSON.stringify({ query: "Comms", filter: { value: "database", property: "object" } }),
+        headers: { "Content-Type": "application/json" },
+      });
+      const searchData = await searchRes.json();
+      const found = (searchData.results ?? []).find((db: any) => {
+        const title = (db.title ?? []).map((t: any) => t.plain_text).join("").toLowerCase();
+        return title.includes("comms");
+      });
+      dbId = found?.id;
+    }
+
+    if (!dbId) {
+      return res.status(404).json({ error: "Comms Log database not found. Set NOTION_COMMS_DB_ID env var or name the database with 'Comms' in the title." });
+    }
+
+    const data = await queryDb(connectors, dbId, {
+      filter: {
+        or: [
+          { property: "Status", select: { does_not_equal: "Done" } },
+          { property: "Status", select: { does_not_equal: "Archived" } },
+          { property: "Status", select: { does_not_equal: "Dismissed" } },
+        ],
+      },
+      sorts: [{ timestamp: "created_time", direction: "descending" }],
+      page_size: 20,
+    });
+
+    const items = (data.results ?? []).map((page: any) => {
+      const status = prop(page, "Status");
+      if (["Done", "Archived", "Dismissed"].includes(status)) return null;
+
+      const dateRaw =
+        prop(page, "Date") || prop(page, "Created Date") || page.created_time || "";
+
+      const priority =
+        prop(page, "Priority") || prop(page, "Urgency") || prop(page, "Type") || "";
+
+      return {
+        id: page.id,
+        notionUrl: page.url,
+        summary:
+          prop(page, "Name") || prop(page, "Subject") || prop(page, "Summary") ||
+          prop(page, "Title") || "(untitled)",
+        priority: priority.toUpperCase(),
+        source:
+          prop(page, "Source") || prop(page, "Channel") || prop(page, "Platform") || "",
+        client:
+          prop(page, "Client") || prop(page, "Contact") || prop(page, "From") ||
+          prop(page, "Person") || "",
+        status,
+        context:
+          prop(page, "Context") || prop(page, "Why") || prop(page, "Notes") ||
+          prop(page, "Description") || prop(page, "Details") || "",
+        draftReply:
+          prop(page, "Draft Reply") || prop(page, "Draft") || prop(page, "Reply") || "",
+        action:
+          prop(page, "Action") || prop(page, "Action Type") || prop(page, "Next Step") || "",
+        relativeTime: commsRelativeTime(dateRaw),
+      };
+    }).filter(Boolean);
+
+    return res.json({ items, dbId });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /api/notion/comms/:id/dismiss — mark a comms item Done ──────────────
+router.post("/comms/:id/dismiss", async (req: Request, res: Response) => {
+  const { id } = req.params;
+  try {
+    const connectors = getConnectors();
+    await connectors.proxy("notion", `/v1/pages/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ properties: { Status: { select: { name: "Done" } } } }),
+      headers: { "Content-Type": "application/json" },
+    });
+    return res.json({ ok: true });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── POST /api/notion/clients — create a new client page ─────────────────────
 router.post("/clients", async (req: Request, res: Response) => {
   const dbId = (req.body?.db as string) || process.env.NOTION_CLIENTS_DB_ID;

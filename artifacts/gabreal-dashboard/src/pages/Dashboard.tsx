@@ -535,6 +535,37 @@ function SageChatWidget() {
   );
 }
 
+// ─── Types: Comms ─────────────────────────────────────────────────────────────
+type CommItem = {
+  id: string;
+  notionUrl: string;
+  summary: string;
+  priority: string;   // "HIGH" | "URGENT" | "TASK" | "FYI" | ""
+  source: string;
+  client: string;
+  status: string;
+  context: string;
+  draftReply: string;
+  action: string;
+  relativeTime: string;
+};
+
+const COMMS_MOCK: CommItem[] = [
+  {
+    id: "mock-1", notionUrl: "#", summary: "Kea replied asking about the brand deck timeline",
+    priority: "HIGH", source: "Gmail", client: "Luna Vita", status: "Needs Attention",
+    context: "Active deliverable in progress — client is waiting on your response",
+    draftReply: "Hey Kea! The brand deck is coming together beautifully. I'm targeting end of day Friday to send over the first full draft. Want to set up a quick 20-minute review call for next Monday? Let me know what works!",
+    action: "Reply", relativeTime: "2hr ago",
+  },
+  {
+    id: "mock-2", notionUrl: "#", summary: "Send updated Klaviyo flow proposal to Jeff by Thursday",
+    priority: "TASK", source: "Meeting Notes", client: "LACES", status: "Needs Attention",
+    context: "From LACES strategy call — Jeff expecting follow-up this week",
+    draftReply: "", action: "Approve", relativeTime: "yesterday",
+  },
+];
+
 // ─── View: HOME ───────────────────────────────────────────────────────────────
 function HomeView() {
   const [calOpen, setCalOpen] = useState(false);
@@ -542,6 +573,11 @@ function HomeView() {
   const [agentQuickView, setAgentQuickView] = useState<Agent | null>(null);
   const [schedule, setSchedule] = useState<{ time: string; event: string }[]>(SCHEDULE_MOCK);
   const [scheduleLoading, setScheduleLoading] = useState(true);
+  const [comms, setComms] = useState<CommItem[]>(COMMS_MOCK);
+  const [commsLoading, setCommsLoading] = useState(true);
+  const [commsFilter, setCommsFilter] = useState<"all" | "urgent" | "action" | "fyi">("all");
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
   async function loadSchedule() {
     setScheduleLoading(true);
@@ -557,7 +593,26 @@ function HomeView() {
     }
   }
 
-  useEffect(() => { loadSchedule(); }, []);
+  async function loadComms() {
+    setCommsLoading(true);
+    try {
+      const data = await apiFetch<{ items: CommItem[] }>("/notion/comms");
+      if (data.items?.length) setComms(data.items);
+    } catch {
+      // keep mock
+    } finally {
+      setCommsLoading(false);
+    }
+  }
+
+  async function dismissComm(id: string) {
+    setDismissed(prev => new Set([...prev, id]));
+    if (!id.startsWith("mock-")) {
+      try { await apiFetch(`/notion/comms/${id}/dismiss`, { method: "POST" }); } catch { /* best-effort */ }
+    }
+  }
+
+  useEffect(() => { loadSchedule(); loadComms(); }, []);
 
   return (
     <div>
@@ -613,59 +668,93 @@ function HomeView() {
         </div>
       </div>
 
-      {/* Full-width Needs Attention */}
-      <div className="card" style={{ marginTop: 20 }}>
-        <div className="card-header">
-          <div>
-            <div className="card-label">Needs Your Attention</div>
-            <div className="card-subtitle" style={{ marginBottom: 0 }}>Proposals from Amber</div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div className="filter-pills" style={{ margin: 0 }}>
-              <button className="pill active">All (2)</button>
-              <button className="pill">Urgent (1)</button>
-              <button className="pill">Action (1)</button>
-            </div>
-            <RefreshBtn />
-          </div>
-        </div>
+      {/* Full-width Needs Attention — live from Notion Comms Log */}
+      {(() => {
+        const visible = comms.filter(c => !dismissed.has(c.id));
+        const urgent  = visible.filter(c => ["HIGH","URGENT"].includes(c.priority));
+        const action  = visible.filter(c => ["TASK","ACTION","APPROVE"].includes(c.priority) && !["HIGH","URGENT"].includes(c.priority));
+        const fyi     = visible.filter(c => c.priority === "FYI");
+        const filtered = commsFilter === "urgent" ? urgent
+                       : commsFilter === "action" ? action
+                       : commsFilter === "fyi"    ? fyi
+                       : visible;
 
-        <div className="attention-grid">
-          <div className="attention-card">
-            <div className="attention-meta">
-              <span className="badge badge-high">HIGH</span>
-              <span className="badge badge-source">Gmail</span>
-              <span className="badge badge-client">Luna Vita</span>
-              <span className="badge-time">2 hours ago</span>
-            </div>
-            <div className="attention-summary">Kea replied asking about the brand deck timeline</div>
-            <div className="attention-why">Active deliverable in progress — client is waiting on your response</div>
-            <div className="draft-label">Draft Reply</div>
-            <textarea className="draft-textarea" defaultValue="Hey Kea! The brand deck is coming together beautifully. I'm targeting end of day Friday to send over the first full draft. Want to set up a quick 20-minute review call for next Monday? Let me know what works!" />
-            <div className="action-btns">
-              <button className="btn btn-send">Send ✓</button>
-              <button className="btn btn-approve">Edit + Send ✎</button>
-              <button className="btn btn-dismiss">Dismiss</button>
-            </div>
-          </div>
+        function priorityBadgeClass(p: string) {
+          if (["HIGH","URGENT"].includes(p)) return "badge badge-high";
+          if (["TASK","ACTION","APPROVE"].includes(p)) return "badge badge-task";
+          if (p === "FYI") return "badge badge-fyi";
+          return "badge";
+        }
 
-          <div className="attention-card">
-            <div className="attention-meta">
-              <span className="badge badge-task">TASK</span>
-              <span className="badge badge-source">Meeting Notes</span>
-              <span className="badge badge-client">LACES</span>
-              <span className="badge-time">yesterday</span>
+        return (
+          <div className="card" style={{ marginTop: 20 }}>
+            <div className="card-header">
+              <div>
+                <div className="card-label">Needs Your Attention</div>
+                <div className="card-subtitle" style={{ marginBottom: 0 }}>
+                  {commsLoading ? "Syncing from Notion Comms Log…" : `${visible.length} item${visible.length !== 1 ? "s" : ""} · synced at ${formatTime()}`}
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div className="filter-pills" style={{ margin: 0 }}>
+                  <button className={`pill${commsFilter === "all" ? " active" : ""}`} onClick={() => setCommsFilter("all")}>All ({visible.length})</button>
+                  {urgent.length > 0 && <button className={`pill${commsFilter === "urgent" ? " active" : ""}`} onClick={() => setCommsFilter("urgent")}>Urgent ({urgent.length})</button>}
+                  {action.length > 0 && <button className={`pill${commsFilter === "action" ? " active" : ""}`} onClick={() => setCommsFilter("action")}>Action ({action.length})</button>}
+                  {fyi.length > 0 && <button className={`pill${commsFilter === "fyi" ? " active" : ""}`} onClick={() => setCommsFilter("fyi")}>FYI ({fyi.length})</button>}
+                </div>
+                <RefreshBtn onClick={loadComms} />
+              </div>
             </div>
-            <div className="attention-summary">Send updated Klaviyo flow proposal to Jeff by Thursday</div>
-            <div className="attention-why">From LACES strategy call — Jeff expecting follow-up this week</div>
-            <div className="action-btns">
-              <button className="btn btn-approve">Approve ✓</button>
-              <button className="btn btn-send">Edit + Approve ✎</button>
-              <button className="btn btn-dismiss">Deny ✕</button>
-            </div>
+
+            {filtered.length === 0 ? (
+              <div style={{ padding: "24px 0", textAlign: "center", color: "var(--text-xsoft)", fontFamily: "Inter, sans-serif", fontSize: 14 }}>
+                {commsLoading ? "Loading…" : "All clear — nothing needs your attention right now."}
+              </div>
+            ) : (
+              <div className="attention-grid">
+                {filtered.map(item => {
+                  const draft = drafts[item.id] ?? item.draftReply;
+                  return (
+                    <div key={item.id} className="attention-card">
+                      <div className="attention-meta">
+                        {item.priority && <span className={priorityBadgeClass(item.priority)}>{item.priority}</span>}
+                        {item.source   && <span className="badge badge-source">{item.source}</span>}
+                        {item.client   && <span className="badge badge-client">{item.client}</span>}
+                        {item.relativeTime && <span className="badge-time">{item.relativeTime}</span>}
+                      </div>
+                      <div className="attention-summary">{item.summary}</div>
+                      {item.context && <div className="attention-why">{item.context}</div>}
+                      {draft && (
+                        <>
+                          <div className="draft-label">Draft Reply</div>
+                          <textarea
+                            className="draft-textarea"
+                            value={draft}
+                            onChange={e => setDrafts(prev => ({ ...prev, [item.id]: e.target.value }))}
+                          />
+                        </>
+                      )}
+                      <div className="action-btns">
+                        {draft
+                          ? <>
+                              <button className="btn btn-send">Send ✓</button>
+                              <button className="btn btn-approve">Edit + Send ✎</button>
+                            </>
+                          : <button className="btn btn-approve">Approve ✓</button>
+                        }
+                        {item.notionUrl && item.notionUrl !== "#" && (
+                          <a className="btn btn-approve" href={item.notionUrl} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>Open in Notion ↗</a>
+                        )}
+                        <button className="btn btn-dismiss" onClick={() => dismissComm(item.id)}>Dismiss</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* ── Quick Stats ── Tasks + Invoices ───────────────────── */}
       {(() => {
