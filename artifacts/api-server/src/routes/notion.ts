@@ -5,7 +5,7 @@ const router = Router();
 
 // Known Notion DB IDs (non-sensitive identifiers, safe to hardcode as fallbacks)
 const DEFAULT_TASKS_DB   = process.env.NOTION_TASKS_DB_ID   ?? "222a4fa7-7eaf-812b-8707-d4f1da02d778";
-const DEFAULT_CLIENTS_DB = process.env.NOTION_CLIENTS_DB_ID ?? "222a4fa7-7eaf-812b-8707-d4f1da02d778";
+const DEFAULT_CLIENTS_DB = process.env.NOTION_CLIENTS_DB_ID ?? "";
 
 function getConnectors() {
   return new ReplitConnectors();
@@ -187,35 +187,37 @@ router.get("/clients", async (req: Request, res: Response) => {
     let dbId = (req.query.db as string) || process.env.NOTION_CLIENTS_DB_ID || DEFAULT_CLIENTS_DB;
     let dbUrl: string | undefined;
 
-    // Auto-discover by searching for a database with "Client" in the title
-    if (!process.env.NOTION_CLIENTS_DB_ID && !(req.query.db as string)) {
-      const searchRes = await connectors.proxy("notion", "/v1/search", {
-        method: "POST",
-        body: JSON.stringify({ query: "Client", filter: { value: "database", property: "object" } }),
-        headers: { "Content-Type": "application/json" },
-      });
-      const searchData = await searchRes.json();
-      const found = (searchData.results ?? []).find((db: any) => {
-        const title = (db.title ?? []).map((t: any) => t.plain_text).join("").toLowerCase();
-        return title.includes("client");
-      });
-      if (found) {
-        dbId = found.id;
-        dbUrl = found.url;
+    // Auto-discover by searching for common clients database names
+    if (!dbId) {
+      const searchTerms = ["Clients", "Client", "CRM", "Roster"];
+      for (const term of searchTerms) {
+        const searchRes = await connectors.proxy("notion", "/v1/search", {
+          method: "POST",
+          body: JSON.stringify({ query: term, filter: { value: "database", property: "object" } }),
+          headers: { "Content-Type": "application/json" },
+        });
+        const searchData = await searchRes.json();
+        const found = (searchData.results ?? []).find((db: any) => {
+          const title = (db.title ?? []).map((t: any) => t.plain_text).join("").toLowerCase();
+          return title.includes("client") || title.includes("crm") || title.includes("roster");
+        });
+        if (found) {
+          dbId = found.id;
+          dbUrl = found.url;
+          break;
+        }
       }
+    }
+
+    if (!dbId) {
+      return res.status(404).json({ error: "Clients database not found. Set NOTION_CLIENTS_DB_ID env var or name the database 'Clients' in Notion." });
     }
 
     const data = await queryDb(connectors, dbId, {
       sorts: [{ property: "Name", direction: "ascending" }],
     });
 
-    // Capture the database URL from the first result if we don't have it yet
-    if (!dbUrl && data.results?.length) {
-      // Notion doesn't return DB URL directly from query — build it from the ID
-      dbUrl = `https://notion.so/${dbId.replace(/-/g, "")}`;
-    } else if (!dbUrl) {
-      dbUrl = `https://notion.so/${dbId.replace(/-/g, "")}`;
-    }
+    dbUrl = dbUrl ?? `https://notion.so/${dbId.replace(/-/g, "")}`;
 
     const clients = (data.results ?? []).map((page: any) => ({
       notionId: page.id,

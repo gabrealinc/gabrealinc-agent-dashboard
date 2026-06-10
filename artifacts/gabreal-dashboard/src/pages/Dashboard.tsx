@@ -1168,6 +1168,7 @@ function ClientsView() {
   const [showNewClient, setShowNewClient] = useState(false);
   const [clients, setClients] = useState(CLIENTS);
   const [clientsLoading, setClientsLoading] = useState(true);
+  const [clientsFromNotion, setClientsFromNotion] = useState(false);
   const [notionDbUrl, setNotionDbUrl] = useState<string>("");
   const dbId = import.meta.env.VITE_NOTION_CLIENTS_DB_ID;
 
@@ -1176,10 +1177,13 @@ function ClientsView() {
     try {
       const url = dbId ? `/notion/clients?db=${encodeURIComponent(dbId)}` : "/notion/clients";
       const data = await apiFetch<{ clients: typeof CLIENTS; notionDbUrl?: string }>(url);
-      if (data.clients?.length) setClients(data.clients);
+      // Always replace with Notion data — coerce values to numbers
+      const normalised = (data.clients ?? []).map(c => ({ ...c, value: Number(c.value) || 0 }));
+      setClients(normalised);
+      setClientsFromNotion(true);
       if (data.notionDbUrl) setNotionDbUrl(data.notionDbUrl);
     } catch {
-      // keep mock
+      // keep mock on error
     } finally {
       setClientsLoading(false);
     }
@@ -1201,14 +1205,17 @@ function ClientsView() {
         <div>
           <h1 className="page-greeting">Clients</h1>
           <p className="page-subtitle" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            Your active roster · synced from Notion
-            {notionDbUrl && (
+            {clientsLoading
+              ? "Syncing from Notion…"
+              : clientsFromNotion
+                ? `${clients.length} client${clients.length !== 1 ? "s" : ""} · synced from Notion`
+                : "Your active roster · synced from Notion"}
+            {notionDbUrl && !clientsLoading && (
               <a href={notionDbUrl} target="_blank" rel="noopener noreferrer"
                 style={{ fontSize: 12, color: "var(--accent)", textDecoration: "none", fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 3 }}>
-                Open database ↗
+                Open in Notion ↗
               </a>
             )}
-            {clientsLoading && <span style={{ fontSize: 11, color: "var(--text-xsoft)" }}>syncing…</span>}
           </p>
         </div>
         <button className="ccv2-action-btn" onClick={loadClients} disabled={clientsLoading} style={{ alignSelf: "flex-start" }}>
@@ -1253,6 +1260,15 @@ function ClientsView() {
       </div>
 
       {/* Client cards */}
+      {filtered.length === 0 && !clientsLoading && (
+        <div style={{ padding: "40px 0", textAlign: "center", color: "var(--text-xsoft)", fontFamily: "Inter, sans-serif", fontSize: 14, lineHeight: 1.6 }}>
+          {clientsFromNotion
+            ? filter === "all"
+              ? "No clients found in your Notion database."
+              : `No clients with status "${filter}".`
+            : "No clients to display."}
+        </div>
+      )}
       {filtered.map((c, i) => {
         const initials = c.name.split(" ").map((w: string) => w[0]).join("").slice(0, 2);
         const color = AVATAR_COLORS[i % AVATAR_COLORS.length];
