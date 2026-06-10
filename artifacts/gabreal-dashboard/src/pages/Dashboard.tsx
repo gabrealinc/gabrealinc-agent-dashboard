@@ -376,12 +376,19 @@ function PrioritiesPanel() {
     }
   }
 
+  const ACTIVE = new Set(["To Do", "In Progress", "On Deck"]);
+
+  // Keep only active-status tasks (exclude Done/Archived), sorted by due date, limit to 10
+  const visible = tasks
+    .filter(t => ACTIVE.has(t.status))
+    .slice(0, 10);
+
   return (
-    <div style={{ marginTop: 10 }}>
+    <>
       {loading && tasks === TASKS_SEED.sort() && (
-        <div style={{ fontSize: 12, color: "var(--text-xsoft)", padding: "8px 0" }}>Loading from Notion…</div>
+        <div style={{ fontSize: 12, color: "var(--text-xsoft)", padding: "4px 0 8px" }}>Loading from Notion…</div>
       )}
-      {tasks.map(t => (
+      {visible.map(t => (
         <div key={t.id}>
           <div
             className={`task-row task-row-clickable ${expanded === t.id ? "task-row-open" : ""}`}
@@ -449,7 +456,7 @@ function PrioritiesPanel() {
           )}
         </div>
       ))}
-    </div>
+    </>
   );
 }
 
@@ -558,7 +565,7 @@ function HomeView() {
         <h1 className="page-greeting">{getGreeting()}, Gabby.</h1>
       </div>
 
-      <div className="home-grid">
+      <div className="home-grid" style={{ alignItems: "stretch" }}>
         {/* LEFT — Schedule */}
         <div>
           <div className="card">
@@ -568,18 +575,20 @@ function HomeView() {
               </div>
               <RefreshBtn onClick={loadSchedule} />
             </div>
-            {scheduleLoading && schedule === SCHEDULE_MOCK && (
-              <div style={{ fontSize: 12, color: "var(--text-xsoft)", padding: "8px 0" }}>Loading from Google Calendar…</div>
-            )}
-            {schedule.map((s, i) => (
-              <div className="schedule-item" key={i}>
-                <span className="schedule-time">{s.time}</span>
-                <span className="schedule-name">{s.event}</span>
-              </div>
-            ))}
+            <div className="home-grid-scroll">
+              {scheduleLoading && schedule === SCHEDULE_MOCK && (
+                <div style={{ fontSize: 12, color: "var(--text-xsoft)", padding: "4px 0 8px" }}>Loading from Google Calendar…</div>
+              )}
+              {schedule.map((s, i) => (
+                <div className="schedule-item" key={i}>
+                  <span className="schedule-time">{s.time}</span>
+                  <span className="schedule-name">{s.event}</span>
+                </div>
+              ))}
+            </div>
             <button
               className="card-link"
-              style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
+              style={{ background: "none", border: "none", padding: "10px 0 0", cursor: "pointer", textAlign: "left", flexShrink: 0 }}
               onClick={() => setCalOpen(true)}
             >
               View full calendar →
@@ -592,12 +601,14 @@ function HomeView() {
           <div className="card">
             <div className="card-header">
               <div>
-                <div className="card-label">Today's Priorities</div>
-                <div className="card-subtitle" style={{ marginBottom: 0 }}>synced at {formatTime()}</div>
+                <div className="card-label">This Week's Priorities</div>
+                <div className="card-subtitle" style={{ marginBottom: 0 }}>active tasks only · synced at {formatTime()}</div>
               </div>
               <RefreshBtn />
             </div>
-            <PrioritiesPanel />
+            <div className="home-grid-scroll">
+              <PrioritiesPanel />
+            </div>
           </div>
         </div>
       </div>

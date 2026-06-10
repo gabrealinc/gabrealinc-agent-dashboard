@@ -191,7 +191,31 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
+}
+.home-grid > div {
+  display: flex;
+  flex-direction: column;
+}
+.home-grid > div > .card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+}
+.home-grid-scroll {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(180,130,100,0.2) transparent;
+}
+.home-grid-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.home-grid-scroll::-webkit-scrollbar-thumb {
+  background: rgba(180,130,100,0.25);
+  border-radius: 2px;
 }
 .two-col {
   display: grid;
