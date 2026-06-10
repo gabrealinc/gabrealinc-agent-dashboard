@@ -37,7 +37,14 @@ function prop(page: any, key: string) {
     case "email":       return p.email ?? "";
     case "phone_number":return p.phone_number ?? "";
     case "formula":     return p.formula?.string ?? p.formula?.number ?? p.formula?.boolean ?? "";
-    case "relation":    return p.relation?.map((r: any) => r.id) ?? [];
+    case "relation":    return "";   // relations return IDs only; use a rollup or text field instead
+    case "rollup":      return p.rollup?.array
+                          ?.flatMap((item: any) => {
+                            if (item.type === "title")     return item.title?.map((t: any) => t.plain_text) ?? [];
+                            if (item.type === "rich_text") return item.rich_text?.map((t: any) => t.plain_text) ?? [];
+                            if (item.type === "select")    return item.select?.name ? [item.select.name] : [];
+                            return [];
+                          }).join(", ") ?? "";
     case "people":      return p.people?.map((u: any) => u.name).join(", ") ?? "";
     default:            return "";
   }
@@ -89,7 +96,7 @@ router.get("/tasks", async (req: Request, res: Response) => {
         date: dateDisplay,
         sortDate: (dueRaw || "9999-12-31").slice(0, 10),
         status,
-        client: prop(page, "Client") || prop(page, "Project") || "",
+        client: prop(page, "Client Name") || prop(page, "Client") || prop(page, "Project Name") || prop(page, "Project") || prop(page, "Account") || prop(page, "Company") || "",
         notes: prop(page, "Notes") || prop(page, "Description") || "",
         notionUrl: page.url,
       };
