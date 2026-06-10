@@ -17,12 +17,13 @@ const queryClient = new QueryClient({
 });
 
 function AuthGate({ children }: { children: React.ReactNode }) {
-  const { isLoading, isAuthenticated } = useAuth();
+  const { isLoading, isAuthenticated, login } = useAuth();
+  const [showPassword, setShowPassword] = React.useState(false);
   const [password, setPassword] = React.useState("");
   const [error, setError] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handlePasswordSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setSubmitting(true);
@@ -38,7 +39,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       } else {
         const data = await res.json().catch(() => ({}));
         setError(data.error === "DASHBOARD_PASSWORD not configured"
-          ? "Password login not configured — ask your admin to set DASHBOARD_PASSWORD."
+          ? "Password login not configured."
           : "Incorrect password. Try again.");
         setPassword("");
       }
@@ -59,7 +60,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (!isAuthenticated) {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: "var(--bg, #fdf6ee)" }}>
         <div style={{
           background: "rgba(255, 248, 242, 0.96)",
           borderRadius: 24,
@@ -91,52 +92,109 @@ function AuthGate({ children }: { children: React.ReactNode }) {
             textTransform: "uppercase",
           }}>Command Center</p>
 
-          <form onSubmit={handleSubmit} style={{ width: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
-            <input
-              type="password"
-              placeholder="Enter password"
-              value={password}
-              onChange={e => { setPassword(e.target.value); setError(""); }}
-              autoFocus
-              style={{
-                width: "100%",
-                padding: "15px 20px",
-                borderRadius: 999,
-                border: "1.5px solid rgba(200,150,110,0.25)",
-                background: "rgba(255, 248, 240, 0.8)",
-                fontFamily: "Inter, sans-serif",
-                fontSize: 15,
-                color: "#3d2010",
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-            />
-            {error && (
-              <p style={{ margin: "0 4px", fontFamily: "Inter, sans-serif", fontSize: 13, color: "#c0522a" }}>{error}</p>
-            )}
-            <button
-              type="submit"
-              disabled={submitting || !password}
-              style={{
-                width: "100%",
-                padding: "16px",
-                borderRadius: 999,
-                border: "none",
-                background: submitting || !password
-                  ? "rgba(200,150,110,0.4)"
-                  : "linear-gradient(to right, #d05a28, #e8a84a)",
-                color: "#fff",
-                fontFamily: "Inter, sans-serif",
-                fontWeight: 700,
-                fontSize: 16,
-                cursor: submitting || !password ? "default" : "pointer",
-                letterSpacing: "0.02em",
-                transition: "opacity 0.15s",
-              }}
-            >
-              {submitting ? "…" : "Enter"}
-            </button>
-          </form>
+          {/* Primary: Replit OIDC login */}
+          {!showPassword && (
+            <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
+              <button
+                onClick={() => login()}
+                style={{
+                  width: "100%",
+                  padding: "16px",
+                  borderRadius: 999,
+                  border: "none",
+                  background: "linear-gradient(to right, #d05a28, #e8a84a)",
+                  color: "#fff",
+                  fontFamily: "Inter, sans-serif",
+                  fontWeight: 700,
+                  fontSize: 16,
+                  cursor: "pointer",
+                  letterSpacing: "0.02em",
+                }}
+              >
+                Sign in with Replit
+              </button>
+              <button
+                onClick={() => setShowPassword(true)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  fontFamily: "Inter, sans-serif",
+                  fontSize: 12,
+                  color: "#9c7a6a",
+                  cursor: "pointer",
+                  marginTop: 4,
+                  textDecoration: "underline",
+                }}
+              >
+                Use password instead
+              </button>
+            </div>
+          )}
+
+          {/* Fallback: password login */}
+          {showPassword && (
+            <form onSubmit={handlePasswordSubmit} style={{ width: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
+              <input
+                type="password"
+                placeholder="Enter password"
+                value={password}
+                onChange={e => { setPassword(e.target.value); setError(""); }}
+                autoFocus
+                style={{
+                  width: "100%",
+                  padding: "15px 20px",
+                  borderRadius: 999,
+                  border: "1.5px solid rgba(200,150,110,0.25)",
+                  background: "rgba(255, 248, 240, 0.8)",
+                  fontFamily: "Inter, sans-serif",
+                  fontSize: 15,
+                  color: "#3d2010",
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+              {error && (
+                <p style={{ margin: "0 4px", fontFamily: "Inter, sans-serif", fontSize: 13, color: "#c0522a" }}>{error}</p>
+              )}
+              <button
+                type="submit"
+                disabled={submitting || !password}
+                style={{
+                  width: "100%",
+                  padding: "16px",
+                  borderRadius: 999,
+                  border: "none",
+                  background: submitting || !password
+                    ? "rgba(200,150,110,0.4)"
+                    : "linear-gradient(to right, #d05a28, #e8a84a)",
+                  color: "#fff",
+                  fontFamily: "Inter, sans-serif",
+                  fontWeight: 700,
+                  fontSize: 16,
+                  cursor: submitting || !password ? "default" : "pointer",
+                  letterSpacing: "0.02em",
+                  transition: "opacity 0.15s",
+                }}
+              >
+                {submitting ? "…" : "Enter"}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowPassword(false); setError(""); setPassword(""); }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  fontFamily: "Inter, sans-serif",
+                  fontSize: 12,
+                  color: "#9c7a6a",
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                }}
+              >
+                ← Back
+              </button>
+            </form>
+          )}
         </div>
       </div>
     );
