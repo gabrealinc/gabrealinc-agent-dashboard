@@ -2,17 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
-import { readFileSync } from "fs";
-import { join } from "path";
-import { tmpdir } from "os";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
-
-// Read the API session token written by the API server at startup.
-// This is server-only — never served over HTTP.
-let VITE_API_TOKEN = process.env.DASHBOARD_SECRET ?? "";
-try {
-  VITE_API_TOKEN = readFileSync(join(tmpdir(), "gabreal-api-token"), "utf8").trim();
-} catch { /* token not yet written — frontend will get 401s until API starts */ }
 
 const rawPort = process.env.PORT;
 
@@ -38,10 +28,6 @@ if (!basePath) {
 
 export default defineConfig({
   base: basePath,
-  define: {
-    // Baked into bundle at build time — not exposed via HTTP
-    __API_TOKEN__: JSON.stringify(VITE_API_TOKEN),
-  },
   plugins: [
     react(),
     tailwindcss(),

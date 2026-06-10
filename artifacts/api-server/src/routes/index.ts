@@ -1,13 +1,15 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
+import authRouter from "./auth";
 import notionRouter from "./notion";
 import gcalRouter from "./gcal";
-import { dashboardAuth } from "../middleware/dashboardAuth";
+import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
-router.use("/notion", dashboardAuth, notionRouter);
-router.use("/gcal", dashboardAuth, gcalRouter);
+router.use(authRouter);
+router.use("/notion", requireAuth, notionRouter);
+router.use("/gcal", requireAuth, gcalRouter);
 
 export default router;

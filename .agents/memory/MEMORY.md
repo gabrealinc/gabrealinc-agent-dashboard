@@ -1,3 +1,3 @@
 - [Design preference](design-preference.md) — keep palette light/warm; user rejected dark redesign
-- [Replit connectors usage](replit-connectors.md) — GCal needs `/calendar/v3/` prefix; Notion works with `/v1/`; time parsing from ISO string not Date object
-- [API auth pattern](api-auth-pattern.md) — per-process session token pattern used for connector-backed routes
+- [Replit connectors](replit-connectors.md) — GCal needs `/calendar/v3/` prefix; Notion property names; time parsing quirk
+- [API auth pattern](api-auth-pattern.md) — Replit Auth session cookies protect connector routes; shared-secret approaches were rejected

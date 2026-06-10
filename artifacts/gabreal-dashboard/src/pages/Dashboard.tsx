@@ -288,17 +288,12 @@ const SUBSTACK_POSTS = [
 // ─── API helpers ──────────────────────────────────────────────────────────────
 const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
-// Token baked into bundle at Vite build time from the shared tmp file written
-// by the API server at startup. Never served over HTTP.
-declare const __API_TOKEN__: string;
-const API_TOKEN: string = typeof __API_TOKEN__ !== "undefined" ? __API_TOKEN__ : "";
-
 async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}/api${path}`, {
     ...opts,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      ...(API_TOKEN ? { "X-Dashboard-Secret": API_TOKEN } : {}),
       ...(opts?.headers ?? {}),
     },
   });
