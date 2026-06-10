@@ -830,7 +830,7 @@ function HomeView() {
       })()}
 
       {/* Full-width Liala */}
-      <div className="card" style={{ background: "linear-gradient(135deg, rgba(180,120,220,0.18), rgba(232,160,64,0.13))", cursor: "pointer" }}>
+      <div className="card" style={{ cursor: "pointer" }}>
         <div className="card-label" style={{ color: "#9060C0" }}>Liala · Spirit Team</div>
         <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, marginBottom: 6, letterSpacing: "-0.3px" }}>Soft Power</div>
         <div style={{ fontSize: 13, color: "var(--text-soft)", fontStyle: "italic", lineHeight: 1.6 }}>You're in your luteal phase — the time of the wise woman. Your energy turns inward today. Finish what's already in motion.</div>
