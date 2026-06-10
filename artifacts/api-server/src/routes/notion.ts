@@ -3,6 +3,10 @@ import { ReplitConnectors } from "@replit/connectors-sdk";
 
 const router = Router();
 
+// Known Notion DB IDs (non-sensitive identifiers, safe to hardcode as fallbacks)
+const DEFAULT_TASKS_DB   = process.env.NOTION_TASKS_DB_ID   ?? "222a4fa7-7eaf-812b-8707-d4f1da02d778";
+const DEFAULT_CLIENTS_DB = process.env.NOTION_CLIENTS_DB_ID ?? "d3da4fa7-7eaf-82df-b0d8-014512d331ec";
+
 function getConnectors() {
   return new ReplitConnectors();
 }
@@ -62,38 +66,34 @@ router.get("/databases", async (req: Request, res: Response) => {
 
 // ─── GET /api/notion/tasks?db=<database_id> ──────────────────────────────────
 router.get("/tasks", async (req: Request, res: Response) => {
-  const dbId = (req.query.db as string) || process.env.NOTION_TASKS_DB_ID;
-  if (!dbId) {
-    return res.status(400).json({ error: "No database ID. Pass ?db=<id> or set NOTION_TASKS_DB_ID secret." });
-  }
+  const dbId = (req.query.db as string) || DEFAULT_TASKS_DB;
   try {
     const connectors = getConnectors();
     const data = await queryDb(connectors, dbId, {
       sorts: [{ property: "Due Date", direction: "ascending" }],
-      filter: {
-        property: "Status",
-        select: { does_not_equal: "Archived" },
-      },
     });
 
     const tasks = (data.results ?? []).map((page: any, i: number) => {
-      const dueRaw = prop(page, "Due Date") || prop(page, "Date") || prop(page, "Due") || "";
+      const dueRaw = prop(page, "Due Date") || prop(page, "Start Date") || prop(page, "Date") || prop(page, "Due") || "";
       const due = dueRaw ? new Date(dueRaw) : null;
       const dateDisplay = due
         ? due.toLocaleDateString("en-US", { month: "short", day: "numeric" })
         : "";
+      const status = prop(page, "Status") || "To Do";
+      // Skip archived/done items older than 7 days
+      if (status === "Archived") return null;
       return {
         id: i + 1,
         notionId: page.id,
-        name: prop(page, "Name") || prop(page, "Task") || prop(page, "Title") || "(untitled)",
+        name: prop(page, "Task") || prop(page, "Name") || prop(page, "Title") || "(untitled)",
         date: dateDisplay,
-        sortDate: dueRaw.slice(0, 10),
-        status: prop(page, "Status") || "To Do",
+        sortDate: (dueRaw || "9999-12-31").slice(0, 10),
+        status,
         client: prop(page, "Client") || prop(page, "Project") || "",
         notes: prop(page, "Notes") || prop(page, "Description") || "",
         notionUrl: page.url,
       };
-    });
+    }).filter(Boolean);
 
     return res.json({ tasks });
   } catch (err: any) {
@@ -122,10 +122,7 @@ router.patch("/tasks/:id", async (req: Request, res: Response) => {
 
 // ─── GET /api/notion/clients?db=<database_id> ────────────────────────────────
 router.get("/clients", async (req: Request, res: Response) => {
-  const dbId = (req.query.db as string) || process.env.NOTION_CLIENTS_DB_ID;
-  if (!dbId) {
-    return res.status(400).json({ error: "No database ID. Pass ?db=<id> or set NOTION_CLIENTS_DB_ID secret." });
-  }
+  const dbId = (req.query.db as string) || DEFAULT_CLIENTS_DB;
   try {
     const connectors = getConnectors();
     const data = await queryDb(connectors, dbId, {
