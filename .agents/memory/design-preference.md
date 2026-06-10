@@ -10,4 +10,4 @@ Always use the warm peach/cream light palette. Do NOT redesign to dark mode unle
 
 **Why:** A dark luxe glass redesign was applied and then immediately reverted — Gabby prefers the original warm peach, light orange-yellow aesthetic.
 
-**How to apply:** The original palette lives in `artifacts/gabreal-dashboard/src/index.css`. The canonical pre-dark commit is `2354212`. Any new UI additions should use the existing CSS custom properties (warm peach tones, not dark surfaces).
+**How to apply:** The canonical palette lives in `artifacts/gabreal-dashboard/src/index.css` using CSS custom properties (`--bg`, `--surface`, `--surface-warm`). Any new UI should use those variables, not hardcoded dark surfaces.

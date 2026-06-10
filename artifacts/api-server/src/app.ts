@@ -25,7 +25,29 @@ app.use(
     },
   }),
 );
-app.use(cors());
+const allowedOrigins = (process.env.ALLOWED_ORIGIN ?? "")
+  .split(",")
+  .map(s => s.trim())
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin(origin, cb) {
+      // Allow server-to-server (no origin) and Replit/localhost preview origins
+      if (!origin) return cb(null, true);
+      if (
+        allowedOrigins.includes(origin) ||
+        /\.replit\.dev$/.test(origin) ||
+        /\.repl\.co$/.test(origin) ||
+        /^https?:\/\/localhost(:\d+)?$/.test(origin)
+      ) {
+        return cb(null, true);
+      }
+      cb(new Error(`CORS: origin ${origin} not allowed`));
+    },
+    credentials: true,
+  }),
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
