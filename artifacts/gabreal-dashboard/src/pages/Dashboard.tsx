@@ -288,24 +288,17 @@ const SUBSTACK_POSTS = [
 // ─── API helpers ──────────────────────────────────────────────────────────────
 const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
-// Session token fetched once from /api/auth/session-token; reused for all calls.
-let _sessionToken: string | null = null;
-async function getSessionToken(): Promise<string> {
-  if (_sessionToken) return _sessionToken;
-  const res = await fetch(`${BASE}/api/auth/session-token`);
-  if (!res.ok) throw new Error("Could not obtain session token");
-  const data = await res.json();
-  _sessionToken = data.token as string;
-  return _sessionToken;
-}
+// Token baked into bundle at Vite build time from the shared tmp file written
+// by the API server at startup. Never served over HTTP.
+declare const __API_TOKEN__: string;
+const API_TOKEN: string = typeof __API_TOKEN__ !== "undefined" ? __API_TOKEN__ : "";
 
 async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
-  const token = await getSessionToken();
   const res = await fetch(`${BASE}/api${path}`, {
     ...opts,
     headers: {
       "Content-Type": "application/json",
-      "X-Dashboard-Secret": token,
+      ...(API_TOKEN ? { "X-Dashboard-Secret": API_TOKEN } : {}),
       ...(opts?.headers ?? {}),
     },
   });

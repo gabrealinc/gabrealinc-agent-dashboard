@@ -27,4 +27,4 @@ Pattern: `raw.match(/T(\d{2}):(\d{2})/)`
 After `addIntegration`, also call `proposeIntegration` — without it the credential proxy at runtime returns nothing even though the account is authorized.
 
 ## SDK location in monorepo
-Installed per-package: `artifacts/api-server/node_modules/@replit/connectors-sdk/index.js`
+Installed per-package in `artifacts/api-server` (not workspace root).
