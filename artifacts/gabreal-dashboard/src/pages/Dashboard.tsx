@@ -79,9 +79,10 @@ type Task = {
 };
 
 const STATUS_CYCLE: Record<string, string> = {
-  "To Do": "In Progress",
-  "In Progress": "Done",
-  "Done": "To Do",
+  "On Deck":    "To Do",
+  "To Do":      "In Progress",
+  "In Progress":"In Review",
+  "In Review":  "On Deck",
 };
 
 const TASKS_SEED: Task[] = [
@@ -390,11 +391,11 @@ function PrioritiesPanel({ tasks = [], setTasks, loading }: {
     }
   }
 
-  // Deny-list: hide anything that looks done/complete/archived regardless of exact Notion label
-  const HIDE_RE = /done|complet|finish|archiv|cancel|closed?|dropped?/i;
+  // Allowlist: only show the four active work statuses
+  const ALLOWED_STATUSES = new Set(["On Deck", "To Do", "In Progress", "In Review"]);
 
   const visible = tasks
-    .filter(t => !HIDE_RE.test(t.status))
+    .filter(t => ALLOWED_STATUSES.has(t.status))
     .slice(0, 10);
 
   return (
@@ -413,8 +414,10 @@ function PrioritiesPanel({ tasks = [], setTasks, loading }: {
             <div className="task-date">{t.date}</div>
             <button
               className={`task-status-pill ${
+                t.status === "On Deck" ? "pill-ondeck" :
                 t.status === "To Do" ? "pill-todo" :
-                t.status === "In Progress" ? "pill-progress" : "pill-done"
+                t.status === "In Progress" ? "pill-progress" :
+                t.status === "In Review" ? "pill-review" : "pill-todo"
               } ${syncing === t.id ? "pill-syncing" : ""}`}
               onClick={e => cycleStatus(t, e)}
               title="Click to change status"

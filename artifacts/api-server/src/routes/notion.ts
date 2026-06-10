@@ -116,6 +116,7 @@ router.get("/tasks", async (req: Request, res: Response) => {
       const s = raw.toLowerCase().trim();
       if (/\b(done|complet\w*|finish\w*|closed?)\b/.test(s)) return "Done";
       if (/\b(archiv\w*|cancel\w*|drop+ed?)\b/.test(s))      return "Archived";
+      if (/\b(in.?review|review(ing)?|needs.?review|for.?review)\b/.test(s)) return "In Review";
       if (/\b(in.?progress|doing|wip|active|started)\b/.test(s)) return "In Progress";
       if (/\b(on.?deck|up.?next|next|queue\w*)\b/.test(s))   return "On Deck";
       if (/\b(blocked?|waiting|on.?hold|stuck)\b/.test(s))   return "Blocked";
@@ -123,6 +124,7 @@ router.get("/tasks", async (req: Request, res: Response) => {
       return raw;
     }
 
+    const ALLOWED_STATUSES = new Set(["On Deck", "To Do", "In Progress", "In Review"]);
     const tasks = (data.results ?? []).map((page: any, i: number) => {
       const dueRaw =
         prop(page, "Due Date") || prop(page, "Due") || prop(page, "Date") ||
@@ -133,7 +135,7 @@ router.get("/tasks", async (req: Request, res: Response) => {
         : "";
       const rawStatus = prop(page, "Status") || prop(page, "Stage") || prop(page, "State") || "To Do";
       const status = normalizeStatus(String(rawStatus));
-      if (status === "Archived" || status === "Done") return null;
+      if (!ALLOWED_STATUSES.has(status)) return null;
       return {
         id: i + 1,
         notionId: page.id,
