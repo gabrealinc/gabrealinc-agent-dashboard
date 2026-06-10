@@ -1,0 +1,50 @@
+Spec for the Agent Health tab in the Agent Dashboard (Replit). Hand this whole page to the Replit agent. Purpose: make silent agent failures visible within hours from anywhere. A Claude scheduled task can fire without producing output (this is exactly how Sage's brief was down June 3 to 9 with no alert), so health = "did the report land in Notion on time," never "did the task fire."
+
+## Step 0 — Data Layer Check (do first)
+
+Confirm how the current dashboard reads Notion. If Supabase edge functions are still in the path, replace them: the Express server on Replit should call the Notion API directly with the integration token stored in Replit Secrets (NOTION_TOKEN). Goal state: Notion → Replit server → UI. No Supabase. Remove the dependency once all panels are migrated.
+
+## Data Sources (Notion)
+
+- Agent Roster DB: `375a4fa7-7eaf-809d-9ca7-000b5e5eccd8` — the live list of agents. Never hardcode the roster (per Dynamic Context Loading SOP).
+- Each agent's Reports DB (ID stored on their roster entry, see schema additions below).
+- Comms Log DB: `8fda87c9-d071-434f-b3b2-130fbfdb1f83` (for the needs-attention count badge, optional).
+
+## Required Roster Schema Additions
+
+Add these properties to the Agent Roster DB so health stays dynamic when the crew changes:
+
+- **Reports DB ID** (text): the agent's Reports data source ID
+- **Cadence** (select): Hourly / Daily / Weekdays / Weekly / Per-cycle
+- **Expected Time** (text, optional): e.g. "06:30" for Sage, used for nicer display
+- **Status** (select): Active / Paused / Building — Paused and Building agents show gray, never red
+
+## Backend
+
+Route: `GET /api/agent-health`
+
+1. Query Agent Roster DB for all agents.
+2. For each Active agent, query their Reports DB for the most recent entry (sort by Date desc, limit 1).
+3. Compute staleness vs cadence (all times America/Phoenix or Gabby's current TZ setting):
+    - **Green**: last report within 1x cadence window
+    - **Yellow**: between 1x and 2x overdue
+    - **Red**: more than 2x overdue, or no report ever and agent is Active
+    - **Gray**: roster Status = Paused or Building
+    - Weekdays cadence: skip weekends in the math (Milton should not go red on Sunday).
+4. Cache response 5 minutes server-side (Notion rate limits).
+5. Response per agent: `{ name, role, status, lastReportAt, lastReportTitle, lastReportUrl, cadence, overdueBy }`.
+
+## Frontend
+
+New "Agent Health" tab. One card per agent: name, role, colored status dot, "last report 2h ago," link to the latest report in Notion. Sort: red first, then yellow, green, gray. If anything is red, show a banner across the top of every dashboard tab: "⚠️ {agent} has not reported in {time}." Timestamp of last health check in the corner. Mobile-friendly: this panel is the from-anywhere trust check.
+
+## Alerting Split
+
+- Dashboard panel = pull (Gabby checks from anywhere).
+- Mae = push: her 1pm and 5pm runs do the same staleness math and post to Slack if anything is yellow/red. Panel and Mae must use the same thresholds so they never disagree.
+
+## Edge Cases
+
+- New agent just added: Building status until first report, no red.
+- Per-cycle agents (Dave payroll): health tracks their daily/weekly runs, not the cycle ones.
+- If the Notion API call itself fails, show a distinct "can't reach Notion" state, not all-red.

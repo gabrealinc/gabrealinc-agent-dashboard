@@ -19,11 +19,44 @@ function formatTime() {
   return new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 function isoDate(d: Date) { return d.toISOString().slice(0, 10); }
+
+function timeAgo(isoString: string | null): string {
+  if (!isoString) return "never";
+  const diffMs = Date.now() - new Date(isoString).getTime();
+  const mins = Math.floor(diffMs / 60_000);
+  if (mins < 1)   return "just now";
+  if (mins < 60)  return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24)   return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
 function addDays(d: Date, n: number) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
 function weekStart(d: Date) { const r = new Date(d); const day = r.getDay(); r.setDate(r.getDate() - day + (day === 0 ? -6 : 1)); return r; }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type View = "home" | "clients" | "finance" | "intelligence" | "substack" | "spirit" | "agents";
+
+type HealthStatus = "green" | "yellow" | "red" | "gray";
+interface AgentHealth {
+  name: string;
+  role: string;
+  rosterStatus: string;
+  healthStatus: HealthStatus;
+  lastReportAt: string | null;
+  lastReportTitle: string | null;
+  lastReportUrl: string | null;
+  cadence: string;
+  overdueBy: string | null;
+  expectedTime: string | null;
+}
+interface AgentHealthResponse {
+  agents: AgentHealth[];
+  checkedAt: string;
+  cached: boolean;
+  error?: string;
+  message?: string;
+}
 
 // ─── Static mock fallback data ────────────────────────────────────────────────
 const SCHEDULE_MOCK = [
@@ -1759,34 +1792,149 @@ function SpiritView() {
 }
 
 // ─── View: AGENTS ─────────────────────────────────────────────────────────────
-function AgentsView() {
+const HEALTH_DOT: Record<HealthStatus, string> = {
+  green:  "#4CAF6B",
+  yellow: "#D4A017",
+  red:    "#C0522A",
+  gray:   "#B0A090",
+};
+const HEALTH_LABEL: Record<HealthStatus, string> = {
+  green:  "On track",
+  yellow: "Overdue",
+  red:    "Late",
+  gray:   "Inactive",
+};
+
+function AgentHealthCard({ a }: { a: AgentHealth }) {
+  return (
+    <div className="agent-card" style={{
+      borderLeft: `3px solid ${HEALTH_DOT[a.healthStatus]}`,
+      position: "relative",
+    }}>
+      <div className="agent-header">
+        <div className="agent-name-row">
+          <div style={{
+            width: 10, height: 10, borderRadius: "50%", flexShrink: 0, marginTop: 2,
+            background: HEALTH_DOT[a.healthStatus],
+            boxShadow: a.healthStatus === "red" ? `0 0 6px ${HEALTH_DOT.red}88` : undefined,
+          }} />
+          <div>
+            <div className="agent-name">{a.name}</div>
+            <div className="agent-role">{a.role}</div>
+          </div>
+        </div>
+        <span style={{
+          fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 10,
+          background: `${HEALTH_DOT[a.healthStatus]}22`,
+          color: HEALTH_DOT[a.healthStatus],
+          fontFamily: "Inter, sans-serif",
+        }}>
+          {HEALTH_LABEL[a.healthStatus]}
+        </span>
+      </div>
+      <div style={{ fontSize: 12, color: "var(--text-soft)", fontFamily: "Inter, sans-serif", marginTop: 6 }}>
+        {a.overdueBy
+          ? <span style={{ color: HEALTH_DOT[a.healthStatus], fontWeight: 600 }}>{a.overdueBy}</span>
+          : null}
+        {a.overdueBy && a.lastReportAt ? " · " : null}
+        {a.lastReportAt
+          ? `Last report ${timeAgo(a.lastReportAt)}`
+          : a.rosterStatus === "Active" ? "No reports found" : a.rosterStatus}
+      </div>
+      {a.lastReportTitle && (
+        <div style={{ fontSize: 11, color: "var(--text-xsoft)", marginTop: 4, fontFamily: "Inter, sans-serif", fontStyle: "italic" }}>
+          {a.lastReportTitle}
+        </div>
+      )}
+      <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 10, color: "var(--text-xsoft)", fontFamily: "Inter, sans-serif", background: "var(--bg-soft)", padding: "2px 7px", borderRadius: 8 }}>
+          {a.cadence}{a.expectedTime ? ` · ${a.expectedTime}` : ""}
+        </span>
+        {a.lastReportUrl && (
+          <a
+            href={a.lastReportUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ccv2-action-btn"
+            style={{ fontSize: 10, textDecoration: "none" }}
+          >
+            Latest report ↗
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AgentsView({ healthData, healthCheckedAt, healthLoading, healthError, onRefresh }: {
+  healthData: AgentHealth[];
+  healthCheckedAt: string | null;
+  healthLoading: boolean;
+  healthError: string | null;
+  onRefresh: () => void;
+}) {
+  const hasLiveData = healthData.length > 0;
+
   return (
     <div>
-      <div className="page-header">
-        <h1 className="page-greeting">Agents</h1>
-        <p className="page-subtitle">Your multi-agent operating system</p>
+      <div className="page-header" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+        <div>
+          <h1 className="page-greeting">Agent Health</h1>
+          <p className="page-subtitle">
+            {healthCheckedAt
+              ? `Last checked ${timeAgo(healthCheckedAt)}`
+              : "Your multi-agent operating system"}
+          </p>
+        </div>
+        <button className="ccv2-action-btn" onClick={onRefresh} disabled={healthLoading} style={{ alignSelf: "center" }}>
+          {healthLoading ? "Checking…" : "↺ Refresh"}
+        </button>
       </div>
 
-      <div className="agents-grid" style={{ marginBottom: 20 }}>
-        {AGENTS.map((a, i) => (
-          <div className="agent-card" key={i}>
-            <div className="agent-header">
-              <div className="agent-name-row">
-                <div className={`agent-dot dot-${a.status}`} />
-                <div>
-                  <div className="agent-name">{a.name}</div>
-                  <div className="agent-role">{a.role}</div>
+      {healthError === "notion_unreachable" && (
+        <div style={{
+          background: "#FFF3E0", border: "1px solid #FFB347", borderRadius: 10,
+          padding: "10px 16px", marginBottom: 16, fontSize: 13,
+          fontFamily: "Inter, sans-serif", color: "#7A4010",
+        }}>
+          ⚠ Can't reach Notion right now — showing last known data. Check your integration connection.
+        </div>
+      )}
+
+      {healthLoading && !hasLiveData && (
+        <div style={{ fontSize: 13, color: "var(--text-xsoft)", padding: "20px 0", fontFamily: "Inter, sans-serif" }}>
+          Checking agent health…
+        </div>
+      )}
+
+      {hasLiveData && (
+        <div className="agents-grid" style={{ marginBottom: 20 }}>
+          {healthData.map(a => <AgentHealthCard key={a.name} a={a} />)}
+        </div>
+      )}
+
+      {!hasLiveData && !healthLoading && (
+        <div className="agents-grid" style={{ marginBottom: 20 }}>
+          {AGENTS.map((a, i) => (
+            <div className="agent-card" key={i}>
+              <div className="agent-header">
+                <div className="agent-name-row">
+                  <div className={`agent-dot dot-${a.status}`} />
+                  <div>
+                    <div className="agent-name">{a.name}</div>
+                    <div className="agent-role">{a.role}</div>
+                  </div>
                 </div>
+                <span className={`agent-status-badge status-${a.status}`}>
+                  {a.status.charAt(0).toUpperCase() + a.status.slice(1)}
+                </span>
               </div>
-              <span className={`agent-status-badge status-${a.status}`}>
-                {a.status.charAt(0).toUpperCase() + a.status.slice(1)}
-              </span>
+              <div className="agent-desc">{a.desc}</div>
+              <div className="agent-last">Last active: {a.last}</div>
             </div>
-            <div className="agent-desc">{a.desc}</div>
-            <div className="agent-last">Last active: {a.last}</div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       <div className="card">
         <div className="card-label">Mac Mini · Remote Control</div>
@@ -1805,18 +1953,20 @@ function AgentsView() {
         </div>
       </div>
 
-      <div className="card">
-        <div className="card-label">Agent Activity</div>
-        <div style={{ marginTop: 10 }}>
-          {ACTIVITY_LOG.map((e, i) => (
-            <div className="activity-entry" key={i}>
-              <span className="activity-time">{e.time}</span>
-              <span className="activity-dot" style={{ background: e.color }} />
-              <span className="activity-text">{e.text}</span>
-            </div>
-          ))}
+      {!hasLiveData && (
+        <div className="card">
+          <div className="card-label">Agent Activity</div>
+          <div style={{ marginTop: 10 }}>
+            {ACTIVITY_LOG.map((e, i) => (
+              <div className="activity-entry" key={i}>
+                <span className="activity-time">{e.time}</span>
+                <span className="activity-dot" style={{ background: e.color }} />
+                <span className="activity-text">{e.text}</span>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -1834,6 +1984,34 @@ const VIEWS: { id: View; label: string }[] = [
 
 export default function Dashboard() {
   const [view, setView] = useState<View>("home");
+
+  // ── Agent health — fetched at Dashboard level so banner spans all tabs ──────
+  const [healthData, setHealthData]           = useState<AgentHealth[]>([]);
+  const [healthCheckedAt, setHealthCheckedAt] = useState<string | null>(null);
+  const [healthLoading, setHealthLoading]     = useState(false);
+  const [healthError, setHealthError]         = useState<string | null>(null);
+
+  const fetchHealth = useCallback(async () => {
+    setHealthLoading(true);
+    try {
+      const res = await apiFetch<AgentHealthResponse>("/agent-health");
+      if (res.error) {
+        setHealthError(res.error);
+      } else {
+        setHealthData(res.agents ?? []);
+        setHealthCheckedAt(res.checkedAt ?? null);
+        setHealthError(null);
+      }
+    } catch {
+      setHealthError("fetch_failed");
+    } finally {
+      setHealthLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchHealth(); }, [fetchHealth]);
+
+  const redAgents = healthData.filter(a => a.healthStatus === "red");
 
   return (
     <div>
@@ -1856,14 +2034,52 @@ export default function Dashboard() {
         </div>
       </nav>
 
+      {redAgents.length > 0 && (
+        <div style={{
+          background: "#C0522A",
+          color: "#fff",
+          padding: "8px 20px",
+          fontSize: 13,
+          fontFamily: "Inter, sans-serif",
+          fontWeight: 500,
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          flexWrap: "wrap",
+        }}>
+          <span>⚠️</span>
+          {redAgents.map((a, i) => (
+            <span key={a.name}>
+              <strong>{a.name}</strong> has not reported
+              {a.overdueBy && a.overdueBy !== "no report found" ? ` in ${a.overdueBy.replace(" overdue", "")}` : " — no report found"}
+              {i < redAgents.length - 1 ? " · " : ""}
+            </span>
+          ))}
+          <button
+            onClick={() => setView("agents")}
+            style={{ marginLeft: "auto", background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 6, color: "#fff", fontSize: 12, padding: "3px 10px", cursor: "pointer", fontFamily: "Inter, sans-serif" }}
+          >
+            View →
+          </button>
+        </div>
+      )}
+
       <main className="main">
-        {view === "home" && <HomeView />}
-        {view === "clients" && <ClientsView />}
-        {view === "finance" && <FinanceView />}
+        {view === "home"         && <HomeView />}
+        {view === "clients"      && <ClientsView />}
+        {view === "finance"      && <FinanceView />}
         {view === "intelligence" && <IntelligenceView />}
-        {view === "substack" && <SubstackView />}
-        {view === "spirit" && <SpiritView />}
-        {view === "agents" && <AgentsView />}
+        {view === "substack"     && <SubstackView />}
+        {view === "spirit"       && <SpiritView />}
+        {view === "agents"       && (
+          <AgentsView
+            healthData={healthData}
+            healthCheckedAt={healthCheckedAt}
+            healthLoading={healthLoading}
+            healthError={healthError}
+            onRefresh={fetchHealth}
+          />
+        )}
       </main>
     </div>
   );
