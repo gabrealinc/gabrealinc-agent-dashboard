@@ -614,7 +614,7 @@ function HomeView() {
       </div>
 
       {/* Full-width Needs Attention */}
-      <div className="card" style={{ marginTop: 0 }}>
+      <div className="card" style={{ marginTop: 20 }}>
         <div className="card-header">
           <div>
             <div className="card-label">Needs Your Attention</div>
