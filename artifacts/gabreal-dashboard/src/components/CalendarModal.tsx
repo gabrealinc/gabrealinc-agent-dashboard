@@ -320,11 +320,52 @@ function MonthView({
 // ─── Main CalendarModal ───────────────────────────────────────────────────────
 export default function CalendarModal({ onClose }: { onClose: () => void }) {
   const [calView, setCalView] = useState<"week" | "month">("week");
-  const [cursor, setCursor] = useState(new Date("2026-06-09"));
+  const [cursor, setCursor] = useState(new Date());
   const [events, setEvents] = useState<CalEvent[]>(DEFAULT_EVENTS);
+  const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<CalEvent | null | "new">(null);
   const [newEventDefaults, setNewEventDefaults] = useState<Partial<CalEvent>>({});
   const overlayRef = useRef<HTMLDivElement>(null);
+
+  // Fetch GCal events for the visible date range
+  useEffect(() => {
+    async function fetchEvents() {
+      setLoading(true);
+      try {
+        let timeMin: Date;
+        let timeMax: Date;
+
+        if (calView === "week") {
+          timeMin = weekStart(cursor);
+          timeMax = addDays(timeMin, 7);
+        } else {
+          // Full month: first day of month → first day of next month
+          timeMin = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+          timeMax = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+        }
+
+        const params = new URLSearchParams({
+          timeMin: timeMin.toISOString(),
+          timeMax: timeMax.toISOString(),
+        });
+
+        const res = await fetch(`/api/gcal/events?${params}`, { credentials: "include" });
+        if (!res.ok) throw new Error("fetch failed");
+        const data = await res.json();
+        if (data.events?.length) {
+          // Merge live events with any local edits (keep local additions/edits)
+          setEvents(data.events as CalEvent[]);
+        }
+      } catch {
+        // keep seed data if API fails
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchEvents();
+  // Re-fetch whenever the view type or the visible date range changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [calView, cursor.toISOString().slice(0, 7)]);
 
   // Close on overlay click
   function handleOverlay(e: React.MouseEvent) {
@@ -394,6 +435,7 @@ export default function CalendarModal({ onClose }: { onClose: () => void }) {
             <button className="cal-nav-btn" onClick={prevPeriod}>‹</button>
             <button className="cal-nav-btn" onClick={nextPeriod}>›</button>
             <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", minWidth: 220 }}>{periodLabel}</span>
+            {loading && <span style={{ fontSize: 11, color: "var(--text-xsoft)", fontFamily: "Inter, sans-serif" }}>syncing…</span>}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div className="cal-view-toggle">

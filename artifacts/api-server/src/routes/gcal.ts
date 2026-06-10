@@ -7,14 +7,14 @@ function getConnectors() {
   return new ReplitConnectors();
 }
 
-// ─── GET /api/gcal/events?days=7 — fetch upcoming events ─────────────────────
+// ─── GET /api/gcal/events?days=7&timeMin=ISO&timeMax=ISO ─────────────────────
 router.get("/events", async (req: Request, res: Response) => {
-  const days = Math.min(parseInt(req.query.days as string) || 1, 30);
+  const days = Math.min(parseInt(req.query.days as string) || 1, 60);
   const calendarId = (req.query.cal as string) || "primary";
 
   const now = new Date();
-  const timeMin = now.toISOString();
-  const timeMax = new Date(now.getTime() + days * 86400000).toISOString();
+  const timeMin = (req.query.timeMin as string) || now.toISOString();
+  const timeMax = (req.query.timeMax as string) || new Date(now.getTime() + days * 86400000).toISOString();
 
   try {
     const connectors = getConnectors();
@@ -29,39 +29,54 @@ router.get("/events", async (req: Request, res: Response) => {
       return res.status(400).json({ error: data.error.message });
     }
 
+    // GCal colorId → warm hex palette for the dashboard
+    const COLOR_MAP: Record<string, string> = {
+      "1": "#FFCDD2", "2": "#C8E6C9", "3": "#A5D6A7",
+      "4": "#FFCDD2", "5": "#FFE0B2", "6": "#F8BBD9",
+      "7": "#C8E6C9", "8": "#E8EAF6", "9": "#E1BEE7",
+      "10": "#E0F7FA", "11": "#F3E5F5",
+    };
+    function extractTime(raw: string): string {
+      const m = raw.match(/T(\d{2}):(\d{2})/);
+      return m ? `${m[1]}:${m[2]}` : "00:00";
+    }
+    function extractDate(raw: string): string {
+      return raw.slice(0, 10);
+    }
+
     const events = (data.items ?? []).map((ev: any) => {
-      const start = ev.start?.dateTime ?? ev.start?.date ?? "";
-      const end   = ev.end?.dateTime   ?? ev.end?.date   ?? "";
-      const d = start ? new Date(start) : null;
-      // ISO strings like "2026-06-10T06:00:00-07:00" carry their own offset —
-      // extract the local time directly from the string instead of using Date (which converts to server UTC)
-      let timeDisplay = "";
-      if (ev.start?.dateTime) {
-        const raw: string = ev.start.dateTime;
-        // Try to parse HH:MM from the local portion of the ISO string
-        const localMatch = raw.match(/T(\d{2}):(\d{2})/);
-        if (localMatch) {
-          let h = parseInt(localMatch[1], 10);
-          const m = localMatch[2];
-          const ampm = h >= 12 ? "PM" : "AM";
-          if (h > 12) h -= 12;
-          if (h === 0) h = 12;
-          timeDisplay = `${h}:${m} ${ampm}`;
-        }
-      } else if (ev.start?.date) {
-        timeDisplay = "All day";
+      const startRaw = ev.start?.dateTime ?? ev.start?.date ?? "";
+      const endRaw   = ev.end?.dateTime   ?? ev.end?.date   ?? "";
+      const isAllDay = !ev.start?.dateTime;
+
+      const date      = extractDate(startRaw);
+      const startTime = isAllDay ? "00:00" : extractTime(startRaw);
+      const endTime   = isAllDay ? "23:59" : extractTime(endRaw);
+
+      // timeDisplay for the home widget
+      let timeDisplay = isAllDay ? "All day" : "";
+      if (!isAllDay && startTime) {
+        let [h, m] = startTime.split(":").map(Number);
+        const ampm = h >= 12 ? "PM" : "AM";
+        if (h > 12) h -= 12;
+        if (h === 0) h = 12;
+        timeDisplay = `${h}:${m.toString().padStart(2, "0")} ${ampm}`;
       }
+
       return {
         id: ev.id,
         title: ev.summary ?? "(no title)",
-        start,
-        end,
+        date,
+        startTime,
+        endTime,
+        start: startRaw,
+        end: endRaw,
         timeDisplay,
+        color: COLOR_MAP[ev.colorId ?? ""] ?? "#FFE0B2",
         location: ev.location ?? "",
         description: ev.description ?? "",
-        hangoutLink: ev.hangoutLink ?? "",
-        colorId: ev.colorId ?? "",
-        isAllDay: !ev.start?.dateTime,
+        meetingLink: ev.hangoutLink ?? ev.conferenceData?.entryPoints?.find((ep: any) => ep.entryPointType === "video")?.uri ?? "",
+        isAllDay,
       };
     });
 
