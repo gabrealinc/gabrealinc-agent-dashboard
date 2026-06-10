@@ -288,10 +288,26 @@ const SUBSTACK_POSTS = [
 // ─── API helpers ──────────────────────────────────────────────────────────────
 const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
+// Session token fetched once from /api/auth/session-token; reused for all calls.
+let _sessionToken: string | null = null;
+async function getSessionToken(): Promise<string> {
+  if (_sessionToken) return _sessionToken;
+  const res = await fetch(`${BASE}/api/auth/session-token`);
+  if (!res.ok) throw new Error("Could not obtain session token");
+  const data = await res.json();
+  _sessionToken = data.token as string;
+  return _sessionToken;
+}
+
 async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
+  const token = await getSessionToken();
   const res = await fetch(`${BASE}/api${path}`, {
-    headers: { "Content-Type": "application/json" },
     ...opts,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Dashboard-Secret": token,
+      ...(opts?.headers ?? {}),
+    },
   });
   if (!res.ok) throw new Error(`API ${path} → ${res.status}`);
   return res.json() as Promise<T>;

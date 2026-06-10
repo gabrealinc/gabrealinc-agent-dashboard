@@ -1,19 +1,18 @@
+import { randomBytes } from "crypto";
 import { Request, Response, NextFunction } from "express";
 
 /**
- * Lightweight auth guard for connector-backed routes.
- * If DASHBOARD_SECRET is set, every request must supply it as:
- *   - Bearer token in Authorization header, OR
- *   - X-Dashboard-Secret header
- * When the secret is not configured the middleware is a no-op (dev convenience).
+ * Session token generated fresh on every server start.
+ * The frontend fetches it once from /api/auth/session-token (CORS-gated to
+ * Replit/localhost origins) and attaches it to every subsequent API call.
+ * This is secure-by-default — no manual secret configuration required.
  */
+export const SESSION_TOKEN = randomBytes(32).toString("hex");
+
 export function dashboardAuth(req: Request, res: Response, next: NextFunction) {
-  const secret = process.env.DASHBOARD_SECRET;
-  if (!secret) return next();
-
   const bearer = (req.headers["authorization"] ?? "").replace(/^Bearer\s+/i, "");
-  const header = req.headers["x-dashboard-secret"] ?? "";
+  const header = (req.headers["x-dashboard-secret"] as string) ?? "";
 
-  if (bearer === secret || header === secret) return next();
+  if (bearer === SESSION_TOKEN || header === SESSION_TOKEN) return next();
   return res.status(401).json({ error: "Unauthorized" });
 }

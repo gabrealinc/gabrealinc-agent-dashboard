@@ -1,3 +1,3 @@
 - [Design preference](design-preference.md) — keep palette light/warm; user rejected dark redesign
 - [Replit connectors usage](replit-connectors.md) — GCal needs `/calendar/v3/` prefix; Notion works with `/v1/`; time parsing from ISO string not Date object
-- [Notion DB IDs](notion-db-ids.md) — hardcoded fallback DB IDs for Tasks and Clients/People databases
+- [API auth pattern](api-auth-pattern.md) — per-process session token pattern used for connector-backed routes
