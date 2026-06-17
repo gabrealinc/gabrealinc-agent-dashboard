@@ -98,20 +98,30 @@ router.get("/tasks", async (req: Request, res: Response) => {
 
     if (!dbUrl) dbUrl = `https://notion.so/${dbId.replace(/-/g, "")}`;
 
+    // Paginate through ALL pages in the tasks DB (Notion caps at 100/request)
+    async function fetchAllPages(sorts: any[]): Promise<any[]> {
+      const allResults: any[] = [];
+      let cursor: string | undefined;
+      do {
+        const page: any = await queryDb(connectors, dbId, {
+          sorts,
+          page_size: 100,
+          ...(cursor ? { start_cursor: cursor } : {}),
+        });
+        allResults.push(...(page.results ?? []));
+        cursor = page.has_more ? page.next_cursor : undefined;
+      } while (cursor);
+      return allResults;
+    }
+
     // Fetch tasks + archived client names in parallel
-    const [data, archivedClients] = await Promise.all([
+    const [allPages, archivedClients] = await Promise.all([
       // Tasks query — try sorting by Due Date, fall back to last_edited_time
       (async () => {
         try {
-          return await queryDb(connectors, dbId, {
-            sorts: [{ property: "Due Date", direction: "ascending" }],
-            page_size: 100,
-          });
+          return await fetchAllPages([{ property: "Due Date", direction: "ascending" }]);
         } catch {
-          return queryDb(connectors, dbId, {
-            sorts: [{ timestamp: "last_edited_time", direction: "descending" }],
-            page_size: 100,
-          });
+          return fetchAllPages([{ timestamp: "last_edited_time", direction: "descending" }]);
         }
       })(),
       // Archived client names — best-effort, never blocks task loading
@@ -168,7 +178,7 @@ router.get("/tasks", async (req: Request, res: Response) => {
 
     // Blocklist: only exclude Done and Archived — anything else (including custom names) is shown
     const BLOCKED_STATUSES = new Set(["Done", "Archived"]);
-    const tasks = (data.results ?? []).map((page: any, i: number) => {
+    const tasks = allPages.map((page: any, i: number) => {
       // Hard rule 1: skip pages Notion has archived or trashed
       if (page.archived || page.in_trash) return null;
 
@@ -208,6 +218,8 @@ router.get("/tasks", async (req: Request, res: Response) => {
         notionUrl: page.url,
       };
     }).filter(Boolean);
+
+    console.log(`[tasks] Fetched ${allPages.length} total pages → ${tasks.length} passed filters`);
 
     return res.json({ tasks, notionDbUrl: dbUrl });
   } catch (err: any) {
