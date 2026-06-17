@@ -165,7 +165,7 @@ router.get("/tasks", async (req: Request, res: Response) => {
       return raw;
     }
 
-    const ALLOWED_STATUSES = new Set(["On Deck", "To Do", "In Progress", "In Review"]);
+    const ALLOWED_STATUSES = new Set(["On Deck", "To Do", "In Progress"]);
     const tasks = (data.results ?? []).map((page: any, i: number) => {
       // Hard rule 1: skip pages Notion has archived or trashed
       if (page.archived || page.in_trash) return null;

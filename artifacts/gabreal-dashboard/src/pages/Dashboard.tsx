@@ -358,7 +358,7 @@ function InvoiceStatus({ s }: { s: string }) {
 }
 
 // ─── Priorities panel ─────────────────────────────────────────────────────────
-const ACTIVE_STATUSES = ["On Deck", "To Do", "In Progress", "In Review"] as const;
+const ACTIVE_STATUSES = ["On Deck", "To Do", "In Progress"] as const;
 
 function pillClass(status: string) {
   if (status === "On Deck")    return "pill-ondeck";
@@ -377,7 +377,7 @@ function PrioritiesPanel({ tasks = [], setTasks, loading }: {
   const [syncError, setSyncError] = useState<number | null>(null);
 
   const ALLOWED = new Set<string>(ACTIVE_STATUSES);
-  const visible = tasks.filter(t => ALLOWED.has(t.status)).slice(0, 10);
+  const visible = tasks.filter(t => ALLOWED.has(t.status)).slice(0, 7);
 
   async function patchNotion(task: Task, body: object) {
     if (!task.notionId || task.notionId.startsWith("task-")) return;
