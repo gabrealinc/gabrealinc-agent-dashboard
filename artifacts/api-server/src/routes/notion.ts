@@ -29,6 +29,7 @@ function prop(page: any, key: string) {
     case "title":       return p.title?.map((t: any) => t.plain_text).join("") ?? "";
     case "rich_text":   return p.rich_text?.map((t: any) => t.plain_text).join("") ?? "";
     case "select":      return p.select?.name ?? "";
+    case "status":      return p.status?.name ?? "";   // Notion native Status type (≠ select)
     case "multi_select":return p.multi_select?.map((s: any) => s.name).join(", ") ?? "";
     case "date":        return p.date?.start ?? "";
     case "number":      return p.number ?? 0;
@@ -116,7 +117,22 @@ router.get("/tasks", async (req: Request, res: Response) => {
       // Archived client names — best-effort, never blocks task loading
       (async (): Promise<Set<string>> => {
         try {
-          const clientsDbId = process.env.NOTION_CLIENTS_DB_ID || DEFAULT_CLIENTS_DB;
+          let clientsDbId = process.env.NOTION_CLIENTS_DB_ID || DEFAULT_CLIENTS_DB;
+          // Auto-discover clients DB if no ID configured
+          if (!clientsDbId) {
+            for (const term of ["Clients", "Client", "Roster", "CRM"]) {
+              const sr = await connectors.proxy("notion", "/v1/search", {
+                method: "POST",
+                body: JSON.stringify({ query: term, filter: { value: "database", property: "object" } }),
+                headers: { "Content-Type": "application/json" },
+              });
+              const sd = await sr.json();
+              const found = (sd.results ?? []).find((db: any) =>
+                (db.title ?? []).map((t: any) => t.plain_text).join("").toLowerCase().match(/client|roster|crm/)
+              );
+              if (found) { clientsDbId = found.id; break; }
+            }
+          }
           if (!clientsDbId) return new Set();
           const cd = await queryDb(connectors, clientsDbId, { page_size: 200 });
           const archived = new Set<string>();
