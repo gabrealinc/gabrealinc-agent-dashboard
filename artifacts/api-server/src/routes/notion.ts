@@ -159,16 +159,23 @@ router.get("/tasks", async (req: Request, res: Response) => {
   }
 });
 
-// ─── PATCH /api/notion/tasks/:id — update a task's status ───────────────────
+// ─── PATCH /api/notion/tasks/:id — update status and/or due date ─────────────
 router.patch("/tasks/:id", async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { status } = req.body ?? {};
-  if (!status) return res.status(400).json({ error: "Missing status in body" });
+  const { status, dueDate } = req.body ?? {};
+  if (!status && !dueDate) return res.status(400).json({ error: "Missing status or dueDate in body" });
   try {
     const connectors = getConnectors();
+    const properties: Record<string, any> = {};
+    if (status) properties["Status"] = { select: { name: status } };
+    if (dueDate) {
+      // Use the property name passed from the client, or default to "Due Date"
+      const datePropName = (req.body.datePropName as string) || "Due Date";
+      properties[datePropName] = { date: { start: dueDate } };
+    }
     const result = await connectors.proxy("notion", `/v1/pages/${id}`, {
       method: "PATCH",
-      body: JSON.stringify({ properties: { Status: { select: { name: status } } } }),
+      body: JSON.stringify({ properties }),
       headers: { "Content-Type": "application/json" },
     });
     const data = await result.json();

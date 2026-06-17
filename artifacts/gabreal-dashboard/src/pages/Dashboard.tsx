@@ -356,137 +356,173 @@ function InvoiceStatus({ s }: { s: string }) {
 }
 
 // ─── Priorities panel ─────────────────────────────────────────────────────────
+const ACTIVE_STATUSES = ["On Deck", "To Do", "In Progress", "In Review"] as const;
+
+function pillClass(status: string) {
+  if (status === "On Deck")    return "pill-ondeck";
+  if (status === "In Progress") return "pill-progress";
+  if (status === "In Review")   return "pill-review";
+  return "pill-todo";
+}
+
 function PrioritiesPanel({ tasks = [], setTasks, loading }: {
   tasks?: Task[];
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
   loading: boolean;
 }) {
   const [expanded, setExpanded] = useState<number | null>(null);
-  const [syncing, setSyncing] = useState<number | null>(null);
+  const [syncing, setSyncing] = useState<Record<number, "status" | "date" | null>>({});
   const [syncError, setSyncError] = useState<number | null>(null);
 
-  function toggleExpand(id: number) {
-    setExpanded(prev => prev === id ? null : id);
+  const ALLOWED = new Set<string>(ACTIVE_STATUSES);
+  const visible = tasks.filter(t => ALLOWED.has(t.status)).slice(0, 10);
+
+  async function patchNotion(task: Task, body: object) {
+    if (!task.notionId || task.notionId.startsWith("task-")) return;
+    await apiFetch(`/notion/tasks/${task.notionId}`, { method: "PATCH", body: JSON.stringify(body) });
   }
 
-  async function cycleStatus(task: Task, e: React.MouseEvent) {
+  async function changeStatus(task: Task, next: string, e: React.MouseEvent) {
     e.stopPropagation();
-    const next = STATUS_CYCLE[task.status] ?? "To Do";
+    if (task.status === next) return;
     setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: next } : t));
-    setSyncing(task.id);
+    setSyncing(prev => ({ ...prev, [task.id]: "status" }));
     setSyncError(null);
     try {
-      // if it's a real Notion ID (UUID format), patch it
-      if (task.notionId && !task.notionId.startsWith("task-")) {
-        await apiFetch(`/notion/tasks/${task.notionId}`, {
-          method: "PATCH",
-          body: JSON.stringify({ status: next }),
-        });
-      }
+      await patchNotion(task, { status: next });
     } catch {
       setSyncError(task.id);
       setTimeout(() => setSyncError(null), 2500);
     } finally {
-      setSyncing(null);
+      setSyncing(prev => ({ ...prev, [task.id]: null }));
     }
   }
 
-  // Allowlist: only show the four active work statuses
-  const ALLOWED_STATUSES = new Set(["On Deck", "To Do", "In Progress", "In Review"]);
-
-  const visible = tasks
-    .filter(t => ALLOWED_STATUSES.has(t.status))
-    .slice(0, 10);
+  async function changeDate(task: Task, isoDate: string) {
+    const display = isoDate
+      ? new Date(isoDate + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })
+      : "";
+    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, sortDate: isoDate, date: display } : t));
+    setSyncing(prev => ({ ...prev, [task.id]: "date" }));
+    setSyncError(null);
+    try {
+      await patchNotion(task, { dueDate: isoDate });
+    } catch {
+      setSyncError(task.id);
+      setTimeout(() => setSyncError(null), 2500);
+    } finally {
+      setSyncing(prev => ({ ...prev, [task.id]: null }));
+    }
+  }
 
   return (
     <>
       {loading && (
         <div style={{ fontSize: 12, color: "var(--text-xsoft)", padding: "4px 0 8px" }}>Syncing from Notion…</div>
       )}
-      {visible.map(t => (
-        <div key={t.id}>
-          <div
-            className={`task-row task-row-clickable ${expanded === t.id ? "task-row-open" : ""}`}
-            onClick={() => toggleExpand(t.id)}
-          >
-            <div className="task-check" onClick={e => { e.stopPropagation(); cycleStatus(t, e); }} title="Click to advance status" />
-            <div className="task-name">{t.name}</div>
-            <div className="task-date">{t.date}</div>
-            <button
-              className={`task-status-pill ${
-                t.status === "On Deck" ? "pill-ondeck" :
-                t.status === "To Do" ? "pill-todo" :
-                t.status === "In Progress" ? "pill-progress" :
-                t.status === "In Review" ? "pill-review" : "pill-todo"
-              } ${syncing === t.id ? "pill-syncing" : ""}`}
-              onClick={e => cycleStatus(t, e)}
-              title="Click to change status"
-            >
-              {syncing === t.id ? "…" : t.status}
-            </button>
-            <span className={`task-expand-arrow ${expanded === t.id ? "open" : ""}`}>›</span>
-          </div>
-          {expanded === t.id && (
-            <div className="task-detail">
-              {syncError === t.id && (
-                <div className="task-sync-error">⚠ Notion sync failed — update saved locally</div>
-              )}
-              <div className="task-detail-row">
-                <span className="task-detail-label">Client</span>
-                <span className="task-detail-value">{t.client}</span>
-              </div>
-              <div className="task-detail-row">
-                <span className="task-detail-label">Due</span>
-                <span className="task-detail-value">{t.date}</span>
-              </div>
-              {t.notes && (
-                <div className="task-detail-row task-detail-notes">
-                  <span className="task-detail-label">Notes</span>
-                  <span className="task-detail-value">{t.notes}</span>
-                </div>
-              )}
-              {t.notionUrl && (
-                <div className="task-detail-row" style={{ borderTop: "1px solid var(--border)", paddingTop: 8, marginTop: 4 }}>
-                  <a
-                    href={t.notionUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="ccv2-action-btn"
-                    style={{ fontSize: 11, textDecoration: "none", display: "inline-block" }}
-                    onClick={e => e.stopPropagation()}
-                  >
-                    Open in Notion ↗
-                  </a>
-                </div>
-              )}
-              <div className="task-status-row">
-                {(["To Do", "In Progress", "Done"] as const).map(s => (
-                  <button
-                    key={s}
-                    className={`task-status-option ${t.status === s ? "active" : ""}`}
-                    onClick={e => {
-                      e.stopPropagation();
-                      if (t.status !== s) {
-                        const next = s;
-                        setTasks(prev => prev.map(x => x.id === t.id ? { ...x, status: next } : x));
-                        setSyncing(t.id);
-                        setSyncError(null);
-                        apiFetch(`/notion/tasks/${t.notionId}`, {
-                          method: "PATCH",
-                          body: JSON.stringify({ status: next }),
-                        }).catch(() => { setSyncError(t.id); setTimeout(() => setSyncError(null), 2500); })
-                          .finally(() => setSyncing(null));
-                      }
-                    }}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+      {!loading && visible.length === 0 && (
+        <div style={{ fontSize: 13, color: "var(--text-xsoft)", padding: "12px 0", fontStyle: "italic" }}>
+          Nothing active right now.
         </div>
-      ))}
+      )}
+      {visible.map(t => {
+        const isSyncing = syncing[t.id];
+        return (
+          <div key={t.id}>
+            <div
+              className={`task-row task-row-clickable ${expanded === t.id ? "task-row-open" : ""}`}
+              onClick={() => setExpanded(prev => prev === t.id ? null : t.id)}
+            >
+              <div className="task-name">{t.name}</div>
+              <div className="task-date">{t.date}</div>
+              <span className={`task-status-pill ${pillClass(t.status)} ${isSyncing ? "pill-syncing" : ""}`}>
+                {isSyncing === "status" ? "…" : t.status}
+              </span>
+              <span className={`task-expand-arrow ${expanded === t.id ? "open" : ""}`}>›</span>
+            </div>
+
+            {expanded === t.id && (
+              <div className="task-detail" onClick={e => e.stopPropagation()}>
+                {syncError === t.id && (
+                  <div className="task-sync-error">⚠ Notion sync failed — update saved locally</div>
+                )}
+
+                {/* Client */}
+                {t.client && (
+                  <div className="task-detail-row">
+                    <span className="task-detail-label">Client</span>
+                    <span className="task-detail-value">{t.client}</span>
+                  </div>
+                )}
+
+                {/* Editable due date */}
+                <div className="task-detail-row">
+                  <span className="task-detail-label">Due date</span>
+                  <input
+                    type="date"
+                    value={t.sortDate !== "9999-12-31" ? t.sortDate : ""}
+                    onChange={e => changeDate(t, e.target.value)}
+                    onClick={e => e.stopPropagation()}
+                    style={{
+                      border: "1px solid var(--border)",
+                      borderRadius: 6,
+                      padding: "3px 8px",
+                      fontFamily: "Inter, sans-serif",
+                      fontSize: 12,
+                      color: "var(--text)",
+                      background: "var(--surface)",
+                      cursor: "pointer",
+                    }}
+                  />
+                  {isSyncing === "date" && (
+                    <span style={{ fontSize: 11, color: "var(--text-xsoft)", marginLeft: 6 }}>saving…</span>
+                  )}
+                </div>
+
+                {/* Notes */}
+                {t.notes && (
+                  <div className="task-detail-row task-detail-notes">
+                    <span className="task-detail-label">Notes</span>
+                    <span className="task-detail-value">{t.notes}</span>
+                  </div>
+                )}
+
+                {/* Editable status */}
+                <div className="task-detail-row" style={{ alignItems: "flex-start", flexDirection: "column", gap: 6 }}>
+                  <span className="task-detail-label">Status</span>
+                  <div className="task-status-row" style={{ marginTop: 0 }}>
+                    {ACTIVE_STATUSES.map(s => (
+                      <button
+                        key={s}
+                        className={`task-status-option ${t.status === s ? "active" : ""}`}
+                        onClick={e => changeStatus(t, s, e)}
+                        disabled={!!isSyncing}
+                      >
+                        {t.status === s && isSyncing === "status" ? "…" : s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Open in Notion */}
+                {t.notionUrl && (
+                  <div style={{ borderTop: "1px solid var(--border)", paddingTop: 8, marginTop: 6 }}>
+                    <a
+                      href={t.notionUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ccv2-action-btn"
+                      style={{ fontSize: 11, textDecoration: "none", display: "inline-block" }}
+                    >
+                      Open in Notion ↗
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </>
   );
 }
@@ -622,12 +658,11 @@ function HomeView() {
     setTasksLoading(true);
     try {
       const data = await apiFetch<{ tasks: Task[]; notionDbUrl?: string }>("/notion/tasks");
-      if (data.tasks?.length) {
-        setTasks(data.tasks.sort((a, b) => a.sortDate.localeCompare(b.sortDate)));
-      }
+      // Always replace with Notion data (empty = nothing active, show empty state)
+      setTasks((data.tasks ?? []).sort((a, b) => a.sortDate.localeCompare(b.sortDate)));
       if (data.notionDbUrl) setTasksNotionDbUrl(data.notionDbUrl);
     } catch {
-      // keep seed data
+      // keep seed data on network error
     } finally {
       setTasksLoading(false);
     }

@@ -5,7 +5,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Dashboard from "@/pages/Dashboard";
 import NotFound from "@/pages/not-found";
-import { useAuth } from "@workspace/replit-auth-web";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -17,13 +16,18 @@ const queryClient = new QueryClient({
 });
 
 function AuthGate({ children }: { children: React.ReactNode }) {
-  const { isLoading, isAuthenticated, login } = useAuth();
-  const [showPassword, setShowPassword] = React.useState(false);
+  const [authed, setAuthed] = React.useState<boolean | null>(null);
   const [password, setPassword] = React.useState("");
   const [error, setError] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
 
-  async function handlePasswordSubmit(e: React.FormEvent) {
+  React.useEffect(() => {
+    fetch("/api/auth/user", { credentials: "include" })
+      .then(r => setAuthed(r.ok))
+      .catch(() => setAuthed(false));
+  }, []);
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setSubmitting(true);
@@ -35,12 +39,9 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ password }),
       });
       if (res.ok) {
-        window.location.reload();
+        setAuthed(true);
       } else {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error === "DASHBOARD_PASSWORD not configured"
-          ? "Password login not configured."
-          : "Incorrect password. Try again.");
+        setError("Incorrect password. Try again.");
         setPassword("");
       }
     } catch {
@@ -50,7 +51,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     }
   }
 
-  if (isLoading) {
+  if (authed === null) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
         <p style={{ fontFamily: "Inter, sans-serif", color: "#9c7a6a", fontSize: 15 }}>Loading…</p>
@@ -58,7 +59,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!authed) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: "var(--bg, #fdf6ee)" }}>
         <div style={{
@@ -66,7 +67,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
           borderRadius: 24,
           padding: "52px 44px 44px",
           width: "100%",
-          maxWidth: 460,
+          maxWidth: 420,
           boxShadow: "0 8px 48px rgba(180,100,60,0.13)",
           display: "flex",
           flexDirection: "column",
@@ -88,113 +89,56 @@ function AuthGate({ children }: { children: React.ReactNode }) {
             fontWeight: 500,
             letterSpacing: "0.22em",
             color: "#9c7a6a",
-            margin: "0 0 36px",
+            margin: "0 0 40px",
             textTransform: "uppercase",
           }}>Command Center</p>
 
-          {/* Primary: Replit OIDC login */}
-          {!showPassword && (
-            <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
-              <button
-                onClick={() => login()}
-                style={{
-                  width: "100%",
-                  padding: "16px",
-                  borderRadius: 999,
-                  border: "none",
-                  background: "linear-gradient(to right, #d05a28, #e8a84a)",
-                  color: "#fff",
-                  fontFamily: "Inter, sans-serif",
-                  fontWeight: 700,
-                  fontSize: 16,
-                  cursor: "pointer",
-                  letterSpacing: "0.02em",
-                }}
-              >
-                Sign in with Replit
-              </button>
-              <button
-                onClick={() => setShowPassword(true)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  fontFamily: "Inter, sans-serif",
-                  fontSize: 12,
-                  color: "#9c7a6a",
-                  cursor: "pointer",
-                  marginTop: 4,
-                  textDecoration: "underline",
-                }}
-              >
-                Use password instead
-              </button>
-            </div>
-          )}
-
-          {/* Fallback: password login */}
-          {showPassword && (
-            <form onSubmit={handlePasswordSubmit} style={{ width: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
-              <input
-                type="password"
-                placeholder="Enter password"
-                value={password}
-                onChange={e => { setPassword(e.target.value); setError(""); }}
-                autoFocus
-                style={{
-                  width: "100%",
-                  padding: "15px 20px",
-                  borderRadius: 999,
-                  border: "1.5px solid rgba(200,150,110,0.25)",
-                  background: "rgba(255, 248, 240, 0.8)",
-                  fontFamily: "Inter, sans-serif",
-                  fontSize: 15,
-                  color: "#3d2010",
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
-              />
-              {error && (
-                <p style={{ margin: "0 4px", fontFamily: "Inter, sans-serif", fontSize: 13, color: "#c0522a" }}>{error}</p>
-              )}
-              <button
-                type="submit"
-                disabled={submitting || !password}
-                style={{
-                  width: "100%",
-                  padding: "16px",
-                  borderRadius: 999,
-                  border: "none",
-                  background: submitting || !password
-                    ? "rgba(200,150,110,0.4)"
-                    : "linear-gradient(to right, #d05a28, #e8a84a)",
-                  color: "#fff",
-                  fontFamily: "Inter, sans-serif",
-                  fontWeight: 700,
-                  fontSize: 16,
-                  cursor: submitting || !password ? "default" : "pointer",
-                  letterSpacing: "0.02em",
-                  transition: "opacity 0.15s",
-                }}
-              >
-                {submitting ? "…" : "Enter"}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setShowPassword(false); setError(""); setPassword(""); }}
-                style={{
-                  background: "none",
-                  border: "none",
-                  fontFamily: "Inter, sans-serif",
-                  fontSize: 12,
-                  color: "#9c7a6a",
-                  cursor: "pointer",
-                  textDecoration: "underline",
-                }}
-              >
-                ← Back
-              </button>
-            </form>
-          )}
+          <form onSubmit={handleSubmit} style={{ width: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
+            <input
+              type="password"
+              placeholder="Enter password"
+              value={password}
+              onChange={e => { setPassword(e.target.value); setError(""); }}
+              autoFocus
+              style={{
+                width: "100%",
+                padding: "15px 20px",
+                borderRadius: 999,
+                border: "1.5px solid rgba(200,150,110,0.25)",
+                background: "rgba(255, 248, 240, 0.8)",
+                fontFamily: "Inter, sans-serif",
+                fontSize: 15,
+                color: "#3d2010",
+                outline: "none",
+                boxSizing: "border-box",
+              }}
+            />
+            {error && (
+              <p style={{ margin: "0 4px", fontFamily: "Inter, sans-serif", fontSize: 13, color: "#c0522a" }}>{error}</p>
+            )}
+            <button
+              type="submit"
+              disabled={submitting || !password}
+              style={{
+                width: "100%",
+                padding: "16px",
+                borderRadius: 999,
+                border: "none",
+                background: submitting || !password
+                  ? "rgba(200,150,110,0.4)"
+                  : "linear-gradient(to right, #d05a28, #e8a84a)",
+                color: "#fff",
+                fontFamily: "Inter, sans-serif",
+                fontWeight: 700,
+                fontSize: 16,
+                cursor: submitting || !password ? "default" : "pointer",
+                letterSpacing: "0.02em",
+                transition: "opacity 0.15s",
+              }}
+            >
+              {submitting ? "…" : "Enter"}
+            </button>
+          </form>
         </div>
       </div>
     );
