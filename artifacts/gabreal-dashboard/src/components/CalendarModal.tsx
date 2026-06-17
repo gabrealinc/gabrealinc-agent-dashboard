@@ -69,7 +69,8 @@ function fmt12(t: string) {
   return `${h % 12 || 12}:${m.toString().padStart(2, "0")} ${ampm}`;
 }
 function isoDate(d: Date) {
-  return d.toISOString().slice(0, 10);
+  // Use local date parts — toISOString() would give UTC date which shifts at ±timezone offsets
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 function addDays(d: Date, n: number) {
   const r = new Date(d);
@@ -80,6 +81,7 @@ function weekStart(d: Date) {
   const r = new Date(d);
   const day = r.getDay(); // 0=Sun
   r.setDate(r.getDate() - day + (day === 0 ? -6 : 1)); // Mon
+  r.setHours(0, 0, 0, 0); // normalize to local midnight so isoDate is never off-by-one
   return r;
 }
 function monthDays(year: number, month: number) {

@@ -18,7 +18,9 @@ function formatDate() {
 function formatTime() {
   return new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
-function isoDate(d: Date) { return d.toISOString().slice(0, 10); }
+function isoDate(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 function timeAgo(isoString: string | null): string {
   if (!isoString) return "never";
