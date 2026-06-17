@@ -757,7 +757,7 @@ function HomeView() {
                   )}
                 </div>
                 <div className="card-subtitle" style={{ marginBottom: 0 }}>
-                  {tasksLoading ? "syncing from Notion…" : `${tasks.filter(t => ["To Do","In Progress","On Deck"].includes(t.status)).length} active tasks`}
+                  {tasksLoading ? "syncing from Notion…" : `${tasks.filter(t => ACTIVE_STATUSES.includes(t.status as typeof ACTIVE_STATUSES[number])).length} active tasks`}
                 </div>
               </div>
               <RefreshBtn onClick={loadTasks} />
@@ -874,10 +874,12 @@ function HomeView() {
         const weekEnd = isoDate(addDays(weekStart(today), 6));
         const monthStr = today.toLocaleString("en-US", { month: "short" }); // "Jun"
 
-        const overdue  = tasks.filter(t => t.sortDate < todayISO && t.status !== "Done").length;
-        const dueToday = tasks.filter(t => t.sortDate === todayISO && t.status !== "Done").length;
-        const dueWeek  = tasks.filter(t => t.sortDate > todayISO && t.sortDate <= weekEnd && t.status !== "Done").length;
-        const dueMonth = tasks.filter(t => t.sortDate.startsWith(`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}`) && t.status !== "Done").length;
+        // Only count active tasks — server strips Done/Completed from Notion response
+        const overdue  = tasks.filter(t => t.sortDate !== "9999-12-31" && t.sortDate < todayISO).length;
+        const dueToday = tasks.filter(t => t.sortDate === todayISO).length;
+        const dueWeek  = tasks.filter(t => t.sortDate > todayISO && t.sortDate <= weekEnd).length;
+        const dueMonth = tasks.filter(t => t.sortDate !== "9999-12-31" && t.sortDate.startsWith(`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}`)).length;
+        const undated  = tasks.filter(t => t.sortDate === "9999-12-31").length;
 
         const parseAmt = (s: string) => Number(s.replace(/[$,]/g, ""));
         const monthInvoices = INVOICES.filter(inv => inv.date.startsWith(monthStr));
@@ -912,6 +914,12 @@ function HomeView() {
                     <span className="qs-num">{dueMonth}</span>
                     <span className="qs-label">Due this month</span>
                   </div>
+                  {undated > 0 && (
+                    <div className="qs-item" style={{ opacity: 0.6 }}>
+                      <span className="qs-num">{undated}</span>
+                      <span className="qs-label">No date set</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
