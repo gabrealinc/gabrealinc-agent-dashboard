@@ -358,12 +358,12 @@ function InvoiceStatus({ s }: { s: string }) {
 }
 
 // ─── Priorities panel ─────────────────────────────────────────────────────────
-const ACTIVE_STATUSES = ["On Deck", "To Do", "In Progress"] as const;
+const ACTIVE_STATUSES = ["On Deck", "To Do", "In Progress", "On Hold"] as const;
 
 function pillClass(status: string) {
-  if (status === "On Deck")    return "pill-ondeck";
+  if (status === "On Deck")     return "pill-ondeck";
   if (status === "In Progress") return "pill-progress";
-  if (status === "In Review")   return "pill-review";
+  if (status === "On Hold")     return "pill-hold";
   return "pill-todo";
 }
 

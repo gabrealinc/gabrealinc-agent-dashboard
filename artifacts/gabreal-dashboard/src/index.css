@@ -480,6 +480,7 @@ body {
 .pill-todo { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; background: var(--gray-bg); color: var(--text-soft); }
 .pill-progress { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; background: var(--accent-bg); color: var(--accent-dark); }
 .pill-review { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; background: rgba(60,140,200,0.12); color: #2a6ea0; }
+.pill-hold   { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; background: rgba(180,140,60,0.12); color: #8a6a10; }
 .pill-done { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; background: var(--green-bg); color: #407840; }
 .pill-waiting { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; background: #EEF3FF; color: #4060A0; }
 

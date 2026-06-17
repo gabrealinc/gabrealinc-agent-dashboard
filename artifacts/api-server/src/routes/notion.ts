@@ -152,29 +152,31 @@ router.get("/tasks", async (req: Request, res: Response) => {
       })(),
     ]);
 
-    // Normalize common Notion status variants to dashboard-standard values
+    // Normalize Notion status names to dashboard-standard values.
+    // Only Done/Archived are blocked — everything else passes through.
     function normalizeStatus(raw: string): string {
       const s = raw.toLowerCase().trim();
       if (/\b(done|complet\w*|finish\w*|closed?)\b/.test(s)) return "Done";
-      if (/\b(archiv\w*|cancel\w*|drop+ed?)\b/.test(s))      return "Archived";
-      if (/\b(in.?review|review(ing)?|needs.?review|for.?review)\b/.test(s)) return "In Review";
-      if (/\b(in.?progress|doing|wip|active|started)\b/.test(s)) return "In Progress";
-      if (/\b(on.?deck|up.?next|next|queue\w*)\b/.test(s))   return "On Deck";
-      if (/\b(blocked?|waiting|on.?hold|stuck)\b/.test(s))   return "Blocked";
-      if (!raw || /\b(to.?do|todo|not.?started|open|backlog)\b/.test(s)) return "To Do";
-      return raw;
+      if (/\b(archiv\w*|cancel\w*|drop+ed?|dropped?)\b/.test(s)) return "Archived";
+      if (/\b(in.?progress|doing|wip|started)\b/.test(s))    return "In Progress";
+      if (/\b(on.?deck|up.?next|queue\w*)\b/.test(s))        return "On Deck";
+      if (/\b(on.?hold|hold|paused?|waiting|stuck|blocked?)\b/.test(s)) return "On Hold";
+      if (/\b(to.?do|todo|not.?started|open|backlog|new)\b/.test(s))   return "To Do";
+      if (!raw) return "To Do";
+      return raw; // pass through any custom status name as-is
     }
 
-    const ALLOWED_STATUSES = new Set(["On Deck", "To Do", "In Progress"]);
+    // Blocklist: only exclude Done and Archived — anything else (including custom names) is shown
+    const BLOCKED_STATUSES = new Set(["Done", "Archived"]);
     const tasks = (data.results ?? []).map((page: any, i: number) => {
       // Hard rule 1: skip pages Notion has archived or trashed
       if (page.archived || page.in_trash) return null;
 
-      const rawStatus = prop(page, "Status") || prop(page, "Stage") || prop(page, "State") || "To Do";
+      const rawStatus = prop(page, "Status") || prop(page, "Stage") || prop(page, "State") || "";
       const status = normalizeStatus(String(rawStatus));
 
-      // Hard rule 2: only show the four active work statuses — no Done, Archived, Complete, etc.
-      if (!ALLOWED_STATUSES.has(status)) return null;
+      // Hard rule 2: block Done/Archived — everything else is active
+      if (BLOCKED_STATUSES.has(status)) return null;
 
       const clientName = (
         prop(page, "Client Name") || prop(page, "Client") || prop(page, "Project Name") ||
