@@ -97,19 +97,44 @@ router.get("/tasks", async (req: Request, res: Response) => {
 
     if (!dbUrl) dbUrl = `https://notion.so/${dbId.replace(/-/g, "")}`;
 
-    // Try sorting by Due Date; fall back to last_edited_time if the property doesn't exist
-    let data: any;
-    try {
-      data = await queryDb(connectors, dbId, {
-        sorts: [{ property: "Due Date", direction: "ascending" }],
-        page_size: 100,
-      });
-    } catch {
-      data = await queryDb(connectors, dbId, {
-        sorts: [{ timestamp: "last_edited_time", direction: "descending" }],
-        page_size: 100,
-      });
-    }
+    // Fetch tasks + archived client names in parallel
+    const [data, archivedClients] = await Promise.all([
+      // Tasks query — try sorting by Due Date, fall back to last_edited_time
+      (async () => {
+        try {
+          return await queryDb(connectors, dbId, {
+            sorts: [{ property: "Due Date", direction: "ascending" }],
+            page_size: 100,
+          });
+        } catch {
+          return queryDb(connectors, dbId, {
+            sorts: [{ timestamp: "last_edited_time", direction: "descending" }],
+            page_size: 100,
+          });
+        }
+      })(),
+      // Archived client names — best-effort, never blocks task loading
+      (async (): Promise<Set<string>> => {
+        try {
+          const clientsDbId = process.env.NOTION_CLIENTS_DB_ID || DEFAULT_CLIENTS_DB;
+          if (!clientsDbId) return new Set();
+          const cd = await queryDb(connectors, clientsDbId, { page_size: 200 });
+          const archived = new Set<string>();
+          for (const page of cd.results ?? []) {
+            const status = String(prop(page, "Status") || "").toLowerCase();
+            if (/archiv|inactiv|cancel|former|offboard|churned/.test(status)) {
+              const name = (
+                prop(page, "Name") || prop(page, "Client") || prop(page, "Client Name") || ""
+              ).toLowerCase().trim();
+              if (name) archived.add(name);
+            }
+          }
+          return archived;
+        } catch {
+          return new Set(); // fail-open — never hide tasks due to a clients fetch error
+        }
+      })(),
+    ]);
 
     // Normalize common Notion status variants to dashboard-standard values
     function normalizeStatus(raw: string): string {
@@ -126,6 +151,23 @@ router.get("/tasks", async (req: Request, res: Response) => {
 
     const ALLOWED_STATUSES = new Set(["On Deck", "To Do", "In Progress", "In Review"]);
     const tasks = (data.results ?? []).map((page: any, i: number) => {
+      // Hard rule 1: skip pages Notion has archived or trashed
+      if (page.archived || page.in_trash) return null;
+
+      const rawStatus = prop(page, "Status") || prop(page, "Stage") || prop(page, "State") || "To Do";
+      const status = normalizeStatus(String(rawStatus));
+
+      // Hard rule 2: only show the four active work statuses — no Done, Archived, Complete, etc.
+      if (!ALLOWED_STATUSES.has(status)) return null;
+
+      const clientName = (
+        prop(page, "Client Name") || prop(page, "Client") || prop(page, "Project Name") ||
+        prop(page, "Project") || prop(page, "Account") || prop(page, "Company") || ""
+      );
+
+      // Hard rule 3: if the client is archived, suppress all their tasks
+      if (clientName && archivedClients.has(clientName.toLowerCase().trim())) return null;
+
       const dueRaw =
         prop(page, "Due Date") || prop(page, "Due") || prop(page, "Date") ||
         prop(page, "Start Date") || prop(page, "Deadline") || "";
@@ -133,9 +175,7 @@ router.get("/tasks", async (req: Request, res: Response) => {
       const dateDisplay = due
         ? due.toLocaleDateString("en-US", { month: "short", day: "numeric" })
         : "";
-      const rawStatus = prop(page, "Status") || prop(page, "Stage") || prop(page, "State") || "To Do";
-      const status = normalizeStatus(String(rawStatus));
-      if (!ALLOWED_STATUSES.has(status)) return null;
+
       return {
         id: i + 1,
         notionId: page.id,
@@ -145,9 +185,7 @@ router.get("/tasks", async (req: Request, res: Response) => {
         date: dateDisplay,
         sortDate: (dueRaw || "9999-12-31").slice(0, 10),
         status,
-        client:
-          prop(page, "Client Name") || prop(page, "Client") || prop(page, "Project Name") ||
-          prop(page, "Project") || prop(page, "Account") || prop(page, "Company") || "",
+        client: clientName,
         notes: prop(page, "Notes") || prop(page, "Description") || prop(page, "Details") || "",
         notionUrl: page.url,
       };
