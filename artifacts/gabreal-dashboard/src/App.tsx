@@ -23,7 +23,12 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     fetch("/api/auth/user", { credentials: "include" })
-      .then(r => setAuthed(r.ok))
+      .then(async r => {
+        if (!r.ok) { setAuthed(false); return; }
+        const data = await r.json().catch(() => ({}));
+        // /api/auth/user returns { user: null } when unauthenticated
+        setAuthed(data.user != null);
+      })
       .catch(() => setAuthed(false));
   }, []);
 
