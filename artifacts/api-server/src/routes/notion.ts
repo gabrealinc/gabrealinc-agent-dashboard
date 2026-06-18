@@ -416,11 +416,24 @@ router.post("/comms/:id/dismiss", async (req: Request, res: Response) => {
   const { id } = req.params;
   try {
     const connectors = getConnectors();
-    await connectors.proxy("notion", `/v1/pages/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ properties: { Status: { select: { name: "Done" } } } }),
-      headers: { "Content-Type": "application/json" },
-    });
+    // Try native Notion status type first, fall back to select type
+    let ok = false;
+    try {
+      const r = await connectors.proxy("notion", `/v1/pages/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ properties: { Status: { status: { name: "Dismissed" } } } }),
+        headers: { "Content-Type": "application/json" },
+      });
+      ok = r.ok;
+    } catch { /* try select next */ }
+
+    if (!ok) {
+      await connectors.proxy("notion", `/v1/pages/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ properties: { Status: { select: { name: "Dismissed" } } } }),
+        headers: { "Content-Type": "application/json" },
+      });
+    }
     return res.json({ ok: true });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
