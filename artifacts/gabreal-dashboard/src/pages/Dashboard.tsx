@@ -78,6 +78,8 @@ type Task = {
   client: string;
   notes: string;
   notionUrl?: string;
+  parentId?: string | null;
+  subtasks?: Task[];
 };
 
 const STATUS_CYCLE: Record<string, string> = {
@@ -377,7 +379,22 @@ function PrioritiesPanel({ tasks = [], setTasks, loading }: {
   const [syncError, setSyncError] = useState<number | null>(null);
 
   const ALLOWED = new Set<string>(ACTIVE_STATUSES);
-  const visible = tasks.filter(t => ALLOWED.has(t.status)).slice(0, 7);
+  const allActive = tasks.filter(t => ALLOWED.has(t.status));
+
+  // Build parent→children map so subtasks nest under their parent
+  const taskByNotionId = new Map(allActive.map(t => [t.notionId, t]));
+  const childrenMap = new Map<string, Task[]>();
+  const roots: Task[] = [];
+  for (const t of allActive) {
+    if (t.parentId && taskByNotionId.has(t.parentId)) {
+      const list = childrenMap.get(t.parentId) ?? [];
+      list.push(t);
+      childrenMap.set(t.parentId, list);
+    } else {
+      roots.push(t);
+    }
+  }
+  const visible = roots.slice(0, 7).map(t => ({ ...t, subtasks: childrenMap.get(t.notionId) ?? [] }));
 
   async function patchNotion(task: Task, body: object) {
     if (!task.notionId || task.notionId.startsWith("task-")) return;
@@ -429,13 +446,19 @@ function PrioritiesPanel({ tasks = [], setTasks, loading }: {
       )}
       {visible.map(t => {
         const isSyncing = syncing[t.id];
+        const hasSubtasks = (t.subtasks?.length ?? 0) > 0;
         return (
           <div key={t.id}>
             <div
               className={`task-row task-row-clickable ${expanded === t.id ? "task-row-open" : ""}`}
               onClick={() => setExpanded(prev => prev === t.id ? null : t.id)}
             >
-              <div className="task-name">{t.name}</div>
+              <div className="task-name">
+                {t.name}
+                {hasSubtasks && (
+                  <span className="subtask-count">{t.subtasks!.length}</span>
+                )}
+              </div>
               <div className="task-date">{t.date}</div>
               <span className={`task-status-pill ${pillClass(t.status)} ${isSyncing ? "pill-syncing" : ""}`}>
                 {isSyncing === "status" ? "…" : t.status}
@@ -505,6 +528,22 @@ function PrioritiesPanel({ tasks = [], setTasks, loading }: {
                     ))}
                   </div>
                 </div>
+
+                {/* Subtasks */}
+                {hasSubtasks && (
+                  <div className="subtask-list">
+                    {t.subtasks!.map(sub => (
+                      <div key={sub.id} className="subtask-row">
+                        <span className="subtask-bullet">›</span>
+                        <span className="subtask-name">{sub.name}</span>
+                        <span className={`task-status-pill ${pillClass(sub.status)}`} style={{ fontSize: 10, padding: "2px 8px" }}>
+                          {sub.status}
+                        </span>
+                        {sub.date && <span className="task-date">{sub.date}</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {/* Open in Notion */}
                 {t.notionUrl && (

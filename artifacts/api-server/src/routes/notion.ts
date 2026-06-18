@@ -21,6 +21,13 @@ async function queryDb(connectors: ReplitConnectors, databaseId: string, body: o
   return res.json();
 }
 
+// ─── Helper: extract relation IDs from a Notion relation property ─────────────
+function propRelationIds(page: any, key: string): string[] {
+  const p = page.properties?.[key];
+  if (!p || p.type !== "relation") return [];
+  return (p.relation ?? []).map((r: any) => r.id).filter(Boolean);
+}
+
 // ─── Helper: extract a property value from a Notion page ─────────────────────
 function prop(page: any, key: string) {
   const p = page.properties?.[key];
@@ -204,6 +211,15 @@ router.get("/tasks", async (req: Request, res: Response) => {
         ? due.toLocaleDateString("en-US", { month: "short", day: "numeric" })
         : "";
 
+      // Detect parent task via common Notion relation property names
+      const parentId =
+        propRelationIds(page, "Parent task")[0] ||
+        propRelationIds(page, "Parent item")[0] ||
+        propRelationIds(page, "Parent tasks")[0] ||
+        propRelationIds(page, "Parent")[0] ||
+        propRelationIds(page, "Main Task")[0] ||
+        null;
+
       return {
         id: i + 1,
         notionId: page.id,
@@ -216,6 +232,7 @@ router.get("/tasks", async (req: Request, res: Response) => {
         client: clientName,
         notes: prop(page, "Notes") || prop(page, "Description") || prop(page, "Details") || "",
         notionUrl: page.url,
+        parentId: parentId ?? null,
       };
     }).filter(Boolean);
 
