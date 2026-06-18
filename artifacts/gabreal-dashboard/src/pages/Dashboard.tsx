@@ -660,12 +660,10 @@ function HomeView() {
     setTasksLoading(true);
     try {
       const data = await apiFetch<{ tasks: Task[]; notionDbUrl?: string }>("/notion/tasks");
-      console.log("[loadTasks] received", data.tasks?.length, "tasks:", data.tasks?.map(t => `"${t.name}" (${t.status})`));
       // Always replace with Notion data (empty = nothing active, show empty state)
       setTasks((data.tasks ?? []).sort((a, b) => a.sortDate.localeCompare(b.sortDate)));
       if (data.notionDbUrl) setTasksNotionDbUrl(data.notionDbUrl);
-    } catch (err) {
-      console.error("[loadTasks] error:", err);
+    } catch {
       // keep seed data on network error
     } finally {
       setTasksLoading(false);

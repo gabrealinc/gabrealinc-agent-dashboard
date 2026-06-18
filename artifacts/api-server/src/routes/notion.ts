@@ -219,7 +219,6 @@ router.get("/tasks", async (req: Request, res: Response) => {
       };
     }).filter(Boolean);
 
-    console.log(`[tasks] Fetched ${allPages.length} total pages → ${tasks.length} passed filters`);
 
     return res.json({ tasks, notionDbUrl: dbUrl });
   } catch (err: any) {
@@ -339,43 +338,42 @@ router.get("/comms", async (req: Request, res: Response) => {
 
     let dbId = (req.query.db as string) || process.env.NOTION_COMMS_DB_ID;
 
-    // Auto-discover by searching for "Comms" database title
+    // Auto-discover by trying several search terms
     if (!dbId) {
-      const searchRes = await connectors.proxy("notion", "/v1/search", {
-        method: "POST",
-        body: JSON.stringify({ query: "Comms", filter: { value: "database", property: "object" } }),
-        headers: { "Content-Type": "application/json" },
-      });
-      const searchData = await searchRes.json();
-      const found = (searchData.results ?? []).find((db: any) => {
-        const title = (db.title ?? []).map((t: any) => t.plain_text).join("").toLowerCase();
-        return title.includes("comms");
-      });
-      dbId = found?.id;
+      for (const term of ["Comms Log", "Comms", "Communication", "Inbox", "Attention"]) {
+        const searchRes = await connectors.proxy("notion", "/v1/search", {
+          method: "POST",
+          body: JSON.stringify({ query: term, filter: { value: "database", property: "object" } }),
+          headers: { "Content-Type": "application/json" },
+        });
+        const searchData = await searchRes.json();
+        const found = (searchData.results ?? []).find((db: any) => {
+          const title = (db.title ?? []).map((t: any) => t.plain_text).join("").toLowerCase();
+          return /comms|communication|inbox|attention/.test(title);
+        });
+        if (found) { dbId = found.id; break; }
+      }
     }
 
     if (!dbId) {
       return res.status(404).json({ error: "Comms Log database not found. Set NOTION_COMMS_DB_ID env var or name the database with 'Comms' in the title." });
     }
 
+    // Fetch without a Notion-side filter — the select vs. status type mismatch
+    // causes the entire query to fail, so we filter server-side instead.
     const data = await queryDb(connectors, dbId, {
-      filter: {
-        and: [
-          { property: "Status", select: { does_not_equal: "Done" } },
-          { property: "Status", select: { does_not_equal: "Archived" } },
-          { property: "Status", select: { does_not_equal: "Dismissed" } },
-          { property: "Status", select: { does_not_equal: "Complete" } },
-          { property: "Status", select: { does_not_equal: "Completed" } },
-          { property: "Status", select: { does_not_equal: "Resolved" } },
-        ],
-      },
       sorts: [{ timestamp: "created_time", direction: "descending" }],
-      page_size: 50,
+      page_size: 100,
     });
 
+    const COMMS_DONE = new Set(["done", "archived", "dismissed", "complete", "completed", "resolved", "closed"]);
+
+
     const items = (data.results ?? []).map((page: any) => {
-      const status = prop(page, "Status");
-      if (["Done", "Archived", "Dismissed"].includes(status)) return null;
+      if (page.archived || page.in_trash) return null;
+      const status = prop(page, "Status") || "";
+      // Server-side: skip anything that looks finished
+      if (COMMS_DONE.has(status.toLowerCase().trim())) return null;
 
       const dateRaw =
         prop(page, "Date") || prop(page, "Created Date") || page.created_time || "";
