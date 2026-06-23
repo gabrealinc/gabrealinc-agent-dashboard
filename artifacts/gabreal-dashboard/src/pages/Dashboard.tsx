@@ -336,7 +336,16 @@ async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
       ...(opts?.headers ?? {}),
     },
   });
-  if (!res.ok) throw new Error(`API ${path} → ${res.status}`);
+  if (!res.ok) {
+    let detail = "";
+    try {
+      const data = await res.json();
+      detail = data?.message || data?.error || "";
+    } catch {
+      detail = await res.text().catch(() => "");
+    }
+    throw new Error(detail ? `API ${path} -> ${res.status}: ${detail}` : `API ${path} -> ${res.status}`);
+  }
   return res.json() as Promise<T>;
 }
 
@@ -361,6 +370,11 @@ function InvoiceStatus({ s }: { s: string }) {
 
 // ─── Priorities panel ─────────────────────────────────────────────────────────
 const ACTIVE_STATUSES = ["On Deck", "To Do", "In Progress", "On Hold"] as const;
+const DONE_STATUSES = new Set(["done", "complete", "completed", "resolved", "closed", "archived", "dismissed", "filed"]);
+
+function isActiveTaskStatus(status: string) {
+  return !DONE_STATUSES.has(status.toLowerCase().trim());
+}
 
 function pillClass(status: string) {
   if (status === "On Deck")     return "pill-ondeck";
@@ -378,8 +392,7 @@ function PrioritiesPanel({ tasks = [], setTasks, loading }: {
   const [syncing, setSyncing] = useState<Record<number, "status" | "date" | null>>({});
   const [syncError, setSyncError] = useState<number | null>(null);
 
-  const ALLOWED = new Set<string>(ACTIVE_STATUSES);
-  const allActive = tasks.filter(t => ALLOWED.has(t.status));
+  const allActive = tasks.filter(t => isActiveTaskStatus(t.status));
 
   // Build parent→children map so subtasks nest under their parent
   const taskByNotionId = new Map(allActive.map(t => [t.notionId, t]));
@@ -654,9 +667,13 @@ type CommItem = {
   status: string;
   context: string;
   draftReply: string;
+  email?: string;
+  sourceUrl?: string;
   action: string;
   relativeTime: string;
 };
+
+type CommAction = "save_draft" | "ready_to_send" | "done" | "file" | "dismiss" | "delete";
 
 const COMMS_MOCK: CommItem[] = [
   {
@@ -684,8 +701,12 @@ function HomeView() {
   const [comms, setComms] = useState<CommItem[]>(COMMS_MOCK);
   const [commsLoading, setCommsLoading] = useState(true);
   const [commsFromNotion, setCommsFromNotion] = useState(false);
+  const [commsError, setCommsError] = useState("");
   const [commsFilter, setCommsFilter] = useState<"all" | "urgent" | "action" | "fyi">("all");
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [learningNotes, setLearningNotes] = useState<Record<string, string>>({});
+  const [commActionStatus, setCommActionStatus] = useState<Record<string, string>>({});
+  const [actingOnComm, setActingOnComm] = useState<Set<string>>(new Set());
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
   // ── Tasks (shared by PrioritiesPanel and QuickStats) ──────────────────────
@@ -693,17 +714,19 @@ function HomeView() {
     [...TASKS_SEED].sort((a, b) => a.sortDate.localeCompare(b.sortDate))
   );
   const [tasksLoading, setTasksLoading] = useState(true);
+  const [tasksError, setTasksError] = useState("");
   const [tasksNotionDbUrl, setTasksNotionDbUrl] = useState("");
 
   async function loadTasks() {
     setTasksLoading(true);
+    setTasksError("");
     try {
       const data = await apiFetch<{ tasks: Task[]; notionDbUrl?: string }>("/notion/tasks");
       // Always replace with Notion data (empty = nothing active, show empty state)
       setTasks((data.tasks ?? []).sort((a, b) => a.sortDate.localeCompare(b.sortDate)));
       if (data.notionDbUrl) setTasksNotionDbUrl(data.notionDbUrl);
-    } catch {
-      // keep seed data on network error
+    } catch (err: any) {
+      setTasksError(err?.message || "Could not load Notion tasks.");
     } finally {
       setTasksLoading(false);
     }
@@ -725,13 +748,14 @@ function HomeView() {
 
   async function loadComms() {
     setCommsLoading(true);
+    setCommsError("");
     try {
       const data = await apiFetch<{ items: CommItem[] }>("/notion/comms");
       // Always replace with Notion data — empty array means all clear
       setComms(data.items ?? []);
       setCommsFromNotion(true);
-    } catch {
-      // keep mock on error (Notion unreachable / not configured)
+    } catch (err: any) {
+      setCommsError(err?.message || "Could not load Notion comms.");
     } finally {
       setCommsLoading(false);
     }
@@ -741,6 +765,59 @@ function HomeView() {
     setDismissed(prev => new Set([...prev, id]));
     if (!id.startsWith("mock-")) {
       try { await apiFetch(`/notion/comms/${id}/dismiss`, { method: "POST" }); } catch { /* best-effort */ }
+    }
+  }
+
+  async function handleCommAction(item: CommItem, action: CommAction) {
+    const draftReply = drafts[item.id] ?? item.draftReply ?? "";
+    const learningNote = learningNotes[item.id] ?? "";
+    const resolvesItem = ["done", "file", "dismiss", "delete"].includes(action);
+    const localMessage: Record<CommAction, string> = {
+      save_draft: "Draft saved to Notion.",
+      ready_to_send: "Marked ready to send in Notion.",
+      done: "Marked complete in Notion.",
+      file: "Filed in Notion.",
+      dismiss: "Dismissed in Notion.",
+      delete: "Archived in Notion.",
+    };
+
+    setActingOnComm(prev => new Set([...prev, item.id]));
+    setCommActionStatus(prev => ({ ...prev, [item.id]: "Saving to Notion..." }));
+
+    if (item.id.startsWith("mock-")) {
+      setCommActionStatus(prev => ({ ...prev, [item.id]: "Demo item only — not saved to Notion." }));
+      if (resolvesItem) setDismissed(prev => new Set([...prev, item.id]));
+      setActingOnComm(prev => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
+      return;
+    }
+
+    try {
+      await apiFetch(`/notion/comms/${item.id}/action`, {
+        method: "POST",
+        body: JSON.stringify({
+          action,
+          draftReply,
+          learningNote,
+          itemSummary: item.summary,
+          client: item.client,
+          source: item.source,
+          email: item.email,
+        }),
+      });
+      setCommActionStatus(prev => ({ ...prev, [item.id]: localMessage[action] }));
+      if (resolvesItem) setDismissed(prev => new Set([...prev, item.id]));
+    } catch {
+      setCommActionStatus(prev => ({ ...prev, [item.id]: "Not saved. Open in Notion if this keeps happening." }));
+    } finally {
+      setActingOnComm(prev => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
     }
   }
 
@@ -798,12 +875,15 @@ function HomeView() {
                   )}
                 </div>
                 <div className="card-subtitle" style={{ marginBottom: 0 }}>
-                  {tasksLoading ? "syncing from Notion…" : `${tasks.filter(t => ACTIVE_STATUSES.includes(t.status as typeof ACTIVE_STATUSES[number])).length} active tasks`}
+                  {tasksLoading ? "syncing from Notion…" : `${tasks.filter(t => isActiveTaskStatus(t.status)).length} active tasks`}
                 </div>
               </div>
               <RefreshBtn onClick={loadTasks} />
             </div>
             <div className="home-grid-scroll">
+              {tasksError && (
+                <div className="error-banner" style={{ marginBottom: 10 }}>{tasksError}</div>
+              )}
               <PrioritiesPanel tasks={tasks} setTasks={setTasks} loading={tasksLoading} />
             </div>
           </div>
@@ -856,7 +936,9 @@ function HomeView() {
 
             {filtered.length === 0 ? (
               <div style={{ padding: "32px 0", textAlign: "center", color: "var(--text-xsoft)", fontFamily: "Inter, sans-serif", fontSize: 14, lineHeight: 1.6 }}>
-                {commsLoading
+                {commsError
+                  ? <span style={{ color: "#B04040" }}>{commsError}</span>
+                  : commsLoading
                   ? "Loading…"
                   : commsFromNotion
                     ? <>✓ Nothing needs your attention right now.</>
@@ -866,16 +948,25 @@ function HomeView() {
               <div className="attention-grid">
                 {filtered.map(item => {
                   const draft = drafts[item.id] ?? item.draftReply;
+                  const learningNote = learningNotes[item.id] ?? "";
+                  const isActing = actingOnComm.has(item.id);
+                  const actionMessage = commActionStatus[item.id];
                   return (
                     <div key={item.id} className="attention-card">
                       <div className="attention-meta">
                         {item.priority && <span className={priorityBadgeClass(item.priority)}>{item.priority}</span>}
                         {item.source   && <span className="badge badge-source">{item.source}</span>}
                         {item.client   && <span className="badge badge-client">{item.client}</span>}
+                        {item.email    && <span className="badge badge-source">{item.email}</span>}
                         {item.relativeTime && <span className="badge-time">{item.relativeTime}</span>}
                       </div>
                       <div className="attention-summary">{item.summary}</div>
                       {item.context && <div className="attention-why">{item.context}</div>}
+                      {item.sourceUrl && (
+                        <a className="card-link" href={item.sourceUrl} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginBottom: 10 }}>
+                          Open source →
+                        </a>
+                      )}
                       {draft && (
                         <>
                           <div className="draft-label">Draft Reply</div>
@@ -886,19 +977,39 @@ function HomeView() {
                           />
                         </>
                       )}
+                      <div className="draft-label">Teach the system</div>
+                      <textarea
+                        className="draft-textarea"
+                        value={learningNote}
+                        placeholder="Example: this is the client's main email, file these unless pricing changes, reply warmly but keep it short..."
+                        onChange={e => setLearningNotes(prev => ({ ...prev, [item.id]: e.target.value }))}
+                        style={{ minHeight: 54 }}
+                      />
                       <div className="action-btns">
-                        {draft
-                          ? <>
-                              <button className="btn btn-send">Send ✓</button>
-                              <button className="btn btn-approve">Edit + Send ✎</button>
-                            </>
-                          : <button className="btn btn-approve">Approve ✓</button>
-                        }
+                        {draft && (
+                          <>
+                            <button className="btn btn-send" disabled={isActing} onClick={() => handleCommAction(item, "save_draft")}>Save Draft</button>
+                            <button className="btn btn-approve" disabled={isActing} onClick={() => handleCommAction(item, "ready_to_send")}>Ready to Send</button>
+                          </>
+                        )}
+                        <button className="btn btn-approve" disabled={isActing} onClick={() => handleCommAction(item, "done")}>Mark Done</button>
+                        <button className="btn btn-dismiss" disabled={isActing} onClick={() => handleCommAction(item, "file")}>File</button>
+                        <button className="btn btn-dismiss" disabled={isActing} onClick={() => handleCommAction(item, "dismiss")}>I don't need this</button>
+                        <button className="btn btn-dismiss" disabled={isActing} onClick={() => handleCommAction(item, "delete")}>Delete from Queue</button>
                         {item.notionUrl && item.notionUrl !== "#" && (
                           <a className="btn btn-approve" href={item.notionUrl} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>Open in Notion ↗</a>
                         )}
-                        <button className="btn btn-dismiss" onClick={() => dismissComm(item.id)}>Dismiss</button>
                       </div>
+                      {actionMessage && (
+                        <div style={{
+                          marginTop: 8,
+                          fontSize: 12,
+                          color: actionMessage.startsWith("Not saved") ? "#B04040" : "var(--text-soft)",
+                          fontFamily: "Inter, sans-serif",
+                        }}>
+                          {actionMessage}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

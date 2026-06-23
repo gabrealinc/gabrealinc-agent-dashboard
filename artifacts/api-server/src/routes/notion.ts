@@ -18,7 +18,9 @@ async function queryDb(connectors: ReplitConnectors, databaseId: string, body: o
     body: JSON.stringify(body),
     headers: { "Content-Type": "application/json" },
   });
-  return res.json();
+  const data: any = await res.json();
+  if (data?.object === "error") throw new Error(data.message || "Notion database query failed");
+  return data;
 }
 
 // ─── Helper: extract relation IDs from a Notion relation property ─────────────
@@ -58,6 +60,53 @@ function prop(page: any, key: string) {
   }
 }
 
+function textProp(value: string) {
+  return { rich_text: [{ type: "text", text: { content: value.slice(0, 2000) } }] };
+}
+
+function statusPatch(page: any, statusName: string) {
+  const statusProp = page.properties?.Status;
+  if (statusProp?.type === "status") return { Status: { status: { name: statusName } } };
+  if (statusProp?.type === "select") return { Status: { select: { name: statusName } } };
+  return {};
+}
+
+function doneLikeStatusFor(page: any, preferred: string) {
+  const statusProp = page.properties?.Status;
+  const options =
+    statusProp?.type === "status" ? statusProp.status?.options :
+    statusProp?.type === "select" ? statusProp.select?.options :
+    [];
+  const optionNames = (options ?? []).map((o: any) => String(o.name));
+  const preferredMatch = optionNames.find((name: string) => name.toLowerCase() === preferred.toLowerCase());
+  if (preferredMatch) return preferredMatch;
+  return optionNames.find((name: string) => /done|complete|completed|resolved|closed|dismissed|archived|filed/i.test(name)) ?? preferred;
+}
+
+function draftPatch(page: any, draftReply: string) {
+  const draftKey = ["Draft Reply", "Draft", "Reply"].find(key => page.properties?.[key]);
+  if (!draftKey) return {};
+  const draftProp = page.properties?.[draftKey];
+  if (draftProp?.type === "rich_text") return { [draftKey]: textProp(draftReply) };
+  if (draftProp?.type === "title") return { [draftKey]: { title: [{ type: "text", text: { content: draftReply.slice(0, 2000) } }] } };
+  return {};
+}
+
+async function addPageComment(connectors: ReplitConnectors, pageId: string, content: string) {
+  try {
+    await connectors.proxy("notion", "/v1/comments", {
+      method: "POST",
+      body: JSON.stringify({
+        parent: { page_id: pageId },
+        rich_text: [{ type: "text", text: { content: content.slice(0, 2000) } }],
+      }),
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch {
+    // Comments are learning/history only; the action should still succeed.
+  }
+}
+
 // ─── GET /api/notion/databases — list all databases the integration can see ──
 router.get("/databases", async (req: Request, res: Response) => {
   try {
@@ -67,7 +116,7 @@ router.get("/databases", async (req: Request, res: Response) => {
       body: JSON.stringify({ filter: { value: "database", property: "object" } }),
       headers: { "Content-Type": "application/json" },
     });
-    const data = await result.json();
+    const data: any = await result.json();
     const dbs = (data.results ?? []).map((db: any) => ({
       id: db.id,
       title: db.title?.map((t: any) => t.plain_text).join("") ?? "(untitled)",
@@ -95,7 +144,7 @@ router.get("/tasks", async (req: Request, res: Response) => {
         body: JSON.stringify({ query: "Tasks", filter: { value: "database", property: "object" } }),
         headers: { "Content-Type": "application/json" },
       });
-      const searchData = await searchRes.json();
+      const searchData: any = await searchRes.json();
       const found = (searchData.results ?? []).find((db: any) => {
         const title = (db.title ?? []).map((t: any) => t.plain_text).join("").toLowerCase();
         return title.includes("task");
@@ -143,7 +192,7 @@ router.get("/tasks", async (req: Request, res: Response) => {
                 body: JSON.stringify({ query: term, filter: { value: "database", property: "object" } }),
                 headers: { "Content-Type": "application/json" },
               });
-              const sd = await sr.json();
+              const sd: any = await sr.json();
               const found = (sd.results ?? []).find((db: any) =>
                 (db.title ?? []).map((t: any) => t.plain_text).join("").toLowerCase().match(/client|roster|crm/)
               );
@@ -250,19 +299,29 @@ router.patch("/tasks/:id", async (req: Request, res: Response) => {
   if (!status && !dueDate) return res.status(400).json({ error: "Missing status or dueDate in body" });
   try {
     const connectors = getConnectors();
+    const pageRes = await connectors.proxy("notion", `/v1/pages/${id}`, { method: "GET" });
+    const page: any = await pageRes.json();
+    if (page?.object === "error") return res.status(400).json({ error: page.message });
+
     const properties: Record<string, any> = {};
-    if (status) properties["Status"] = { select: { name: status } };
+    if (status) Object.assign(properties, statusPatch(page, status));
     if (dueDate) {
-      // Use the property name passed from the client, or default to "Due Date"
-      const datePropName = (req.body.datePropName as string) || "Due Date";
+      const datePropName =
+        ["Due Date", "Due", "Date", "Start Date", "Deadline"].find(key => page.properties?.[key]?.type === "date") ||
+        (req.body.datePropName as string) ||
+        "Due Date";
       properties[datePropName] = { date: { start: dueDate } };
+    }
+    if (Object.keys(properties).length === 0) {
+      return res.status(400).json({ error: "No compatible Notion properties found to update." });
     }
     const result = await connectors.proxy("notion", `/v1/pages/${id}`, {
       method: "PATCH",
       body: JSON.stringify({ properties }),
       headers: { "Content-Type": "application/json" },
     });
-    const data = await result.json();
+    const data: any = await result.json();
+    if (data?.object === "error") return res.status(400).json({ error: data.message });
     return res.json({ ok: true, page: data });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
@@ -287,7 +346,7 @@ router.get("/clients", async (req: Request, res: Response) => {
           body: JSON.stringify({ query: term, filter: { value: "database", property: "object" } }),
           headers: { "Content-Type": "application/json" },
         });
-        const searchData = await searchRes.json();
+        const searchData: any = await searchRes.json();
         const found = (searchData.results ?? []).find((db: any) => {
           const title = (db.title ?? []).map((t: any) => t.plain_text).join("").toLowerCase();
           return title.includes("client") || title.includes("crm") || title.includes("roster");
@@ -363,7 +422,7 @@ router.get("/comms", async (req: Request, res: Response) => {
           body: JSON.stringify({ query: term, filter: { value: "database", property: "object" } }),
           headers: { "Content-Type": "application/json" },
         });
-        const searchData = await searchRes.json();
+        const searchData: any = await searchRes.json();
         const found = (searchData.results ?? []).find((db: any) => {
           const title = (db.title ?? []).map((t: any) => t.plain_text).join("").toLowerCase();
           return /comms|communication|inbox|attention/.test(title);
@@ -383,7 +442,7 @@ router.get("/comms", async (req: Request, res: Response) => {
       page_size: 100,
     });
 
-    const COMMS_DONE = new Set(["done", "archived", "dismissed", "complete", "completed", "resolved", "closed"]);
+    const COMMS_DONE = new Set(["done", "archived", "dismissed", "complete", "completed", "resolved", "closed", "filed"]);
 
 
     const items = (data.results ?? []).map((page: any) => {
@@ -407,6 +466,12 @@ router.get("/comms", async (req: Request, res: Response) => {
         priority: priority.toUpperCase(),
         source:
           prop(page, "Source") || prop(page, "Channel") || prop(page, "Platform") || "",
+        email:
+          prop(page, "Email") || prop(page, "From Email") || prop(page, "Sender Email") ||
+          prop(page, "Reply To") || "",
+        sourceUrl:
+          prop(page, "Source URL") || prop(page, "Gmail URL") || prop(page, "Slack URL") ||
+          prop(page, "URL") || "",
         client:
           prop(page, "Client") || prop(page, "Contact") || prop(page, "From") ||
           prop(page, "Person") || "",
@@ -428,26 +493,131 @@ router.get("/comms", async (req: Request, res: Response) => {
   }
 });
 
+// ─── POST /api/notion/comms/:id/action — record command center action ─────────
+router.post("/comms/:id/action", async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const {
+    action,
+    draftReply = "",
+    learningNote = "",
+    itemSummary = "",
+    client = "",
+    source = "",
+    email = "",
+  } = req.body ?? {};
+
+  if (!action || typeof action !== "string") {
+    return res.status(400).json({ error: "Missing action" });
+  }
+
+  const statusByAction: Record<string, string> = {
+    dismiss: "Dismissed",
+    done: "Complete",
+    file: "Filed",
+    delete: "Archived",
+    save_draft: "Draft Saved",
+    ready_to_send: "Ready to Send",
+  };
+  const statusName = statusByAction[action] ?? "Needs Attention";
+  const resolvesItem = ["dismiss", "done", "file", "delete"].includes(action);
+
+  try {
+    const connectors = getConnectors();
+    const pageRes = await connectors.proxy("notion", `/v1/pages/${id}`, { method: "GET" });
+    const page: any = await pageRes.json();
+    if (page?.object === "error") return res.status(400).json({ error: page.message });
+
+    const resolvedStatus = resolvesItem ? doneLikeStatusFor(page, statusName) : statusName;
+
+    const properties = {
+      ...statusPatch(page, resolvedStatus),
+      ...(typeof draftReply === "string" && draftReply.trim() ? draftPatch(page, draftReply.trim()) : {}),
+    };
+
+    const patchBody: Record<string, any> = {};
+    if (Object.keys(properties).length > 0) patchBody.properties = properties;
+    if (action === "delete") patchBody.archived = true;
+
+    if (Object.keys(patchBody).length > 0) {
+      const patchRes = await connectors.proxy("notion", `/v1/pages/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(patchBody),
+        headers: { "Content-Type": "application/json" },
+      });
+      const patchData: any = await patchRes.json();
+      if (patchData.object === "error") {
+        if (!resolvesItem) return res.status(400).json({ error: patchData.message });
+
+        // Last-resort clear: archive resolved items so they stop notifying even
+        // when the Notion Status options do not match the dashboard actions.
+        const archiveRes = await connectors.proxy("notion", `/v1/pages/${id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ archived: true }),
+          headers: { "Content-Type": "application/json" },
+        });
+        const archiveData: any = await archiveRes.json();
+        if (archiveData?.object === "error") return res.status(400).json({ error: archiveData.message });
+      }
+    } else if (resolvesItem) {
+      const archiveRes = await connectors.proxy("notion", `/v1/pages/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ archived: true }),
+        headers: { "Content-Type": "application/json" },
+      });
+      const archiveData: any = await archiveRes.json();
+      if (archiveData?.object === "error") return res.status(400).json({ error: archiveData.message });
+    }
+
+    const learningLines = [
+      `Dashboard action: ${resolvedStatus}`,
+      itemSummary ? `Item: ${itemSummary}` : null,
+      client ? `Client/contact: ${client}` : null,
+      email ? `Email/source identity: ${email}` : null,
+      source ? `Source: ${source}` : null,
+      draftReply ? `Draft saved: ${String(draftReply).slice(0, 800)}` : null,
+      learningNote ? `Founder instruction: ${String(learningNote).slice(0, 800)}` : null,
+      `Recorded: ${new Date().toISOString()}`,
+    ].filter(Boolean).join("\n");
+
+    await addPageComment(connectors, String(id), learningLines);
+
+    return res.json({ ok: true, status: resolvedStatus, archived: action === "delete" });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── POST /api/notion/comms/:id/dismiss — mark a comms item Done ──────────────
 router.post("/comms/:id/dismiss", async (req: Request, res: Response) => {
   const { id } = req.params;
   try {
     const connectors = getConnectors();
-    // Try native Notion status type first, fall back to select type
-    let ok = false;
-    try {
-      const r = await connectors.proxy("notion", `/v1/pages/${id}`, {
+    const pageRes = await connectors.proxy("notion", `/v1/pages/${id}`, { method: "GET" });
+    const page: any = await pageRes.json();
+    if (page?.object === "error") return res.status(400).json({ error: page.message });
+
+    const statusName = doneLikeStatusFor(page, "Dismissed");
+    const properties = statusPatch(page, statusName);
+    if (Object.keys(properties).length > 0) {
+      const patchRes = await connectors.proxy("notion", `/v1/pages/${id}`, {
         method: "PATCH",
-        body: JSON.stringify({ properties: { Status: { status: { name: "Dismissed" } } } }),
+        body: JSON.stringify({ properties }),
         headers: { "Content-Type": "application/json" },
       });
-      ok = r.ok;
-    } catch { /* try select next */ }
-
-    if (!ok) {
+      const data: any = await patchRes.json();
+      if (data?.object === "error") {
+        const archiveRes = await connectors.proxy("notion", `/v1/pages/${id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ archived: true }),
+          headers: { "Content-Type": "application/json" },
+        });
+        const archiveData: any = await archiveRes.json();
+        if (archiveData?.object === "error") return res.status(400).json({ error: archiveData.message });
+      }
+    } else {
       await connectors.proxy("notion", `/v1/pages/${id}`, {
         method: "PATCH",
-        body: JSON.stringify({ properties: { Status: { select: { name: "Dismissed" } } } }),
+        body: JSON.stringify({ archived: true }),
         headers: { "Content-Type": "application/json" },
       });
     }
@@ -472,7 +642,7 @@ router.get("/substack", async (req: Request, res: Response) => {
         body: JSON.stringify({ query: "Substack", filter: { value: "database", property: "object" } }),
         headers: { "Content-Type": "application/json" },
       });
-      const searchData = await searchRes.json();
+      const searchData: any = await searchRes.json();
       const found = (searchData.results ?? []).find((db: any) => {
         const title = (db.title ?? []).map((t: any) => t.plain_text).join("").toLowerCase();
         return title.includes("substack");
@@ -536,7 +706,7 @@ router.patch("/substack/:id", async (req: Request, res: Response) => {
       body: JSON.stringify({ properties }),
       headers: { "Content-Type": "application/json" },
     });
-    const data = await result.json();
+    const data: any = await result.json();
     if (data.object === "error") return res.status(400).json({ error: data.message });
     return res.json({ ok: true });
   } catch (err: any) {
@@ -570,7 +740,7 @@ router.post("/clients", async (req: Request, res: Response) => {
       }),
       headers: { "Content-Type": "application/json" },
     });
-    const data = await result.json();
+    const data: any = await result.json();
     return res.status(201).json({ ok: true, page: data });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
