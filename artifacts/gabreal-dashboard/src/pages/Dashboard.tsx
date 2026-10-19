@@ -617,7 +617,7 @@ const COMMS_MOCK: CommItem[] = [
 ];
 
 // ─── View: HOME ───────────────────────────────────────────────────────────────
-function DailyReportCard({ fullPage = false }: { fullPage?: boolean }) {
+function DailyReportCard({ fullPage = false, onOpenFullReport }: { fullPage?: boolean; onOpenFullReport?: () => void }) {
   const [showReports, setShowReports] = useState(false);
   const peggy = AGENTS.find(agent => agent.name === "Peggy") ?? AGENTS[0];
 
@@ -628,9 +628,14 @@ function DailyReportCard({ fullPage = false }: { fullPage?: boolean }) {
           <div className="card-label">Today's Overview</div>
           <div className="card-subtitle" style={{ marginBottom: 0 }}>Peggy's daily report</div>
         </div>
-        <button className="daily-report-flip" type="button" onClick={() => setShowReports(value => !value)}>
-          {showReports ? "Overview" : "Agent reports"} ↻
-        </button>
+        <div className="daily-report-actions">
+          {onOpenFullReport && (
+            <button className="daily-report-full" type="button" onClick={onOpenFullReport}>Full report</button>
+          )}
+          <button className="daily-report-flip" type="button" onClick={() => setShowReports(value => !value)}>
+            {showReports ? "Overview" : "Agent reports"} ↻
+          </button>
+        </div>
       </div>
 
       {!showReports ? (
@@ -828,7 +833,7 @@ function HomeView() {
       </div>
 
       <div className="home-grid home-grid-three" style={{ alignItems: "stretch" }}>
-        <DailyReportCard />
+        <DailyReportCard onOpenFullReport={() => setAgentQuickView(AGENTS.find(agent => agent.name === "Peggy") ?? AGENTS[0])} />
 
         {/* Calendar */}
         <div>
@@ -1158,10 +1163,14 @@ function HomeView() {
       </>}
 
       {calOpen && <CalendarModal onClose={closeCalendar} />}
-      {agentQuickView && <AgentQuickView agent={agentQuickView} onClose={() => {
-        if (agentQuickView.name === "Peggy") window.sessionStorage.setItem("peggy-report-seen", "true");
-        setAgentQuickView(null);
-      }} />}
+      {agentQuickView && (agentQuickView.name === "Peggy" ? (
+        <PeggyDailyReportModal onClose={() => {
+          window.sessionStorage.setItem("peggy-report-seen", "true");
+          setAgentQuickView(null);
+        }} />
+      ) : (
+        <AgentQuickView agent={agentQuickView} onClose={() => setAgentQuickView(null)} />
+      ))}
     </div>
   );
 }
@@ -1174,6 +1183,76 @@ const TAG_STYLES: Record<string, { bg: string; color: string; label: string }> =
   FYI:    { bg: "rgba(90,120,200,0.12)",  color: "#4060A0", label: "FYI" },
   DONE:   { bg: "rgba(80,160,100,0.12)",  color: "#407840", label: "Done" },
 };
+
+function PeggyDailyReportModal({ onClose }: { onClose: () => void }) {
+  const peggy = AGENTS.find(agent => agent.name === "Peggy") ?? AGENTS[0];
+  const handoffs = AGENTS.filter(agent => agent.name !== "Peggy");
+
+  return (
+    <div className="aqv-overlay" onClick={onClose}>
+      <div className="aqv-panel peggy-report-modal" onClick={event => event.stopPropagation()}>
+        <div className="aqv-header peggy-report-header">
+          <div>
+            <div className="peggy-report-eyebrow">Peggy's Daily Report · 8:02 AM</div>
+            <div className="aqv-name">Good evening, Gabby.</div>
+            <div className="aqv-role">Sunday, October 18, 2026</div>
+          </div>
+          <button className="aqv-close" onClick={onClose} aria-label="Minimize Peggy's report">✕</button>
+        </div>
+
+        <div className="peggy-report-scroll">
+          <section className="peggy-report-section peggy-report-intro">
+            <div className="aqv-section-label">Executive Summary</div>
+            <p>{peggy.report.summary}</p>
+          </section>
+
+          <section className="peggy-report-section">
+            <div className="aqv-section-label">What Needs You First</div>
+            <div className="peggy-priority-list">
+              <div><span>1</span><p><strong>Finish the Luna Vita brand deck.</strong>Kea is waiting for a timeline. The draft reply is ready in Needs Attention.</p></div>
+              <div><span>2</span><p><strong>Approve the LACES Klaviyo proposal.</strong>Jeff is expecting the updated flow proposal this week.</p></div>
+              <div><span>3</span><p><strong>Review Nancy's partnership lead.</strong>Mila &amp; Co has a warm introduction available for a Q3 creative partnership.</p></div>
+            </div>
+          </section>
+
+          <section className="peggy-report-section">
+            <div className="aqv-section-label">Today's Calendar</div>
+            <div className="peggy-schedule">
+              {SCHEDULE_MOCK.map(item => <div key={`${item.time}-${item.event}`}><span>{item.time}</span><strong>{item.event}</strong></div>)}
+            </div>
+          </section>
+
+          <section className="peggy-report-section">
+            <div className="aqv-section-label">Agent Reports Peggy Reviewed</div>
+            <div className="peggy-handoffs">
+              {handoffs.map(agent => (
+                <details key={agent.name}>
+                  <summary><span>{agent.name}</span><small>{agent.role}</small></summary>
+                  <p>{agent.report.summary}</p>
+                  {agent.report.items.map((item, index) => (
+                    <div className="peggy-handoff-item" key={`${agent.name}-${index}`}>
+                      <strong>{item.label}</strong><span>{item.note}</span>
+                    </div>
+                  ))}
+                </details>
+              ))}
+            </div>
+          </section>
+
+          <section className="peggy-report-section peggy-report-bottom-line">
+            <div className="aqv-section-label">Peggy's Bottom Line</div>
+            <p>Protect the first focused work block for Luna Vita. Clear the two approvals before the afternoon meetings. Everything else can wait.</p>
+          </section>
+        </div>
+
+        <div className="aqv-footer peggy-report-footer">
+          <span className="aqv-footer-hint">Close to minimize this report into Today's Overview.</span>
+          <button type="button" className="peggy-minimize" onClick={onClose}>Minimize report</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function AgentQuickView({ agent, onClose }: { agent: Agent; onClose: () => void }) {
   // Close on backdrop click
