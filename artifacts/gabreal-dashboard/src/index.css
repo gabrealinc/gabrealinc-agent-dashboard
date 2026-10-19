@@ -689,19 +689,18 @@ body {
   margin-bottom: 8px;
   padding: 7px 9px;
 }
-.task-done-btn {
-  background: rgba(80, 160, 100, 0.1);
-  border: 1px solid rgba(80, 160, 100, 0.22);
-  border-radius: 999px;
-  color: #407840;
+.task-status-select {
+  appearance: auto;
+  border: 1px solid rgba(120, 95, 70, 0.14);
   cursor: pointer;
   flex-shrink: 0;
-  font: 650 10px/1 'Inter', sans-serif;
-  padding: 6px 8px;
-  white-space: nowrap;
+  font-family: 'Inter', sans-serif;
+  min-width: 104px;
+  outline: none;
 }
-.task-done-btn:hover { background: rgba(80, 160, 100, 0.18); }
-.task-done-btn:disabled { cursor: default; opacity: 0.48; }
+.task-status-select:hover { border-color: rgba(201, 105, 29, 0.34); }
+.task-status-select:focus { box-shadow: 0 0 0 2px rgba(232, 160, 64, 0.16); }
+.task-status-select:disabled { cursor: default; opacity: 0.56; }
 .task-client-chip {
   font-size: 11px; font-weight: 600;
   padding: 2px 8px; border-radius: 20px;
