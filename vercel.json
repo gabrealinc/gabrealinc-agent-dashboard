@@ -9,6 +9,7 @@
     "dashboard": {
       "root": "artifacts/gabreal-dashboard",
       "framework": "vite",
+      "outputDirectory": "dist/public",
       "rewrites": [
         { "source": "/(.*)", "destination": "/index.html" }
       ]
