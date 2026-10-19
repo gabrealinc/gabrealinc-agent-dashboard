@@ -581,81 +581,6 @@ function PrioritiesPanel({ tasks = [], setTasks, loading }: {
   );
 }
 
-// ─── Sage Chat Widget (floating, available on all tabs) ───────────────────────
-function SageChatWidget() {
-  const [open, setOpen] = useState(false);
-  const [chatMessages, setChatMessages] = useState<{ role: "sage" | "user"; text: string }[]>([
-    { role: "sage", text: "Good morning! You have 4 meetings today and 3 items in your queue. Your highest priority is the Luna Vita reply — Kea has been waiting since this morning." },
-  ]);
-  const [chatInput, setChatInput] = useState("");
-  const [sending, setSending] = useState(false);
-  const messagesRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (messagesRef.current) messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
-  }, [chatMessages, open]);
-
-  function sendChat() {
-    const msg = chatInput.trim();
-    if (!msg || sending) return;
-    setChatMessages(prev => [...prev, { role: "user", text: msg }]);
-    setChatInput("");
-    setSending(true);
-    setTimeout(() => {
-      setChatMessages(prev => [...prev, { role: "sage", text: "I'm pulling that together for you now. Give me one moment..." }]);
-      setSending(false);
-    }, 900);
-  }
-
-  return (
-    <>
-      {/* Floating button in nav */}
-      <button
-        className={`sage-fab ${open ? "sage-fab-open" : ""}`}
-        onClick={() => setOpen(o => !o)}
-        title="Sage — your executive partner"
-      >
-        <span className="sage-fab-icon">✦</span>
-        <span className="sage-fab-label">Sage</span>
-      </button>
-
-      {/* Floating chat panel */}
-      {open && (
-        <div className="sage-panel">
-          <div className="sage-panel-header">
-            <div>
-              <div style={{ fontFamily: "'Playfair Display', serif", fontWeight: 500, fontSize: 16 }}>Sage</div>
-              <div style={{ fontSize: 11, color: "var(--text-xsoft)", marginTop: 1 }}>Your executive partner · ready to help</div>
-            </div>
-            <button className="cal-icon-btn" onClick={() => setOpen(false)}>✕</button>
-          </div>
-          <div className="chat-messages sage-panel-messages" ref={messagesRef}>
-            {chatMessages.map((m, i) => (
-              <div key={i} className={`chat-msg ${m.role}`}>{m.text}</div>
-            ))}
-            {sending && <div className="chat-msg sage" style={{ opacity: 0.6 }}>...</div>}
-          </div>
-          <div className="sage-panel-footer">
-            <div className="chat-input-row">
-              <input
-                className="chat-input"
-                type="text"
-                placeholder="Ask Sage anything..."
-                value={chatInput}
-                onChange={e => setChatInput(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") sendChat(); }}
-                autoFocus
-              />
-              <button className="btn-send-chat" onClick={sendChat}>Send</button>
-            </div>
-            <div className="powered-by" style={{ marginTop: 6 }}>Powered by Claude via Supabase</div>
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
-
 // ─── Types: Comms ─────────────────────────────────────────────────────────────
 type CommItem = {
   id: string;
@@ -1778,10 +1703,10 @@ function IntelligenceView() {
   );
 }
 
-// ─── View: SUBSTACK ───────────────────────────────────────────────────────────
+// ─── View: WRITING CORNER ─────────────────────────────────────────────────────
 type SubstackPost = { id: string | number; title: string; subtitle: string; status: string; date: string; body: string; tags: string[]; notionUrl?: string };
 
-function SubstackView() {
+function WritingCornerView() {
   const [posts, setPosts] = useState<SubstackPost[]>(SUBSTACK_POSTS.map(p => ({ ...p, id: String(p.id), tags: [], notionUrl: "" })));
   const [selected, setSelected] = useState<SubstackPost>(posts[0]);
   const [loading, setLoading] = useState(true);
@@ -1873,16 +1798,25 @@ function SubstackView() {
     document.body.style.overflow = "hidden";
     window.setTimeout(() => writingBodyRef.current?.focus(), 0);
     const leaveOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !document.fullscreenElement) {
         document.querySelector<HTMLButtonElement>(".writing-time-leave")?.click();
       }
     };
+    const leaveWhenFullscreenCloses = () => {
+      if (!document.fullscreenElement) {
+        const snapshot = JSON.stringify([editTitle, editSubtitle, editBody]);
+        if (snapshot !== lastSavedRef.current) void handleSavePost();
+        setWritingTime(false);
+      }
+    };
     window.addEventListener("keydown", leaveOnEscape);
+    document.addEventListener("fullscreenchange", leaveWhenFullscreenCloses);
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", leaveOnEscape);
+      document.removeEventListener("fullscreenchange", leaveWhenFullscreenCloses);
     };
-  }, [writingTime, selected?.id]);
+  }, [writingTime, selected?.id, editTitle, editSubtitle, editBody]);
 
   useEffect(() => {
     if (!writingTime || !selected) return;
@@ -1897,21 +1831,33 @@ function SubstackView() {
   const filtered = statusFilter === "All" ? posts : posts.filter(p => p.status === statusFilter);
   const wordCount = editBody.trim() ? editBody.trim().split(/\s+/).length : 0;
 
-  async function leaveWritingTime() {
+  async function enterWritingMode() {
+    setWritingTime(true);
+    try {
+      await document.documentElement.requestFullscreen?.();
+    } catch {
+      // The fixed overlay is the fallback when browser fullscreen is unavailable.
+    }
+  }
+
+  async function leaveWritingMode() {
     const snapshot = JSON.stringify([editTitle, editSubtitle, editBody]);
     if (snapshot !== lastSavedRef.current) await handleSavePost();
     setWritingTime(false);
+    if (document.fullscreenElement) {
+      await document.exitFullscreen().catch(() => undefined);
+    }
   }
 
   return (
     <div>
       {writingTime && selected && (
-        <div className="writing-time-overlay" role="dialog" aria-modal="true" aria-label="Writing Time">
+        <div className="writing-time-overlay" role="dialog" aria-modal="true" aria-label="Writing Corner">
           <header className="writing-time-header">
-            <div className="writing-time-brand"><span>w.</span> writing time.</div>
+            <div className="writing-time-brand">Writing Corner</div>
             <div className="writing-time-header-actions">
               <span>{saving ? "Saving..." : saveMsg || "Saved to Notion"}</span>
-              <button className="writing-time-leave" onClick={() => { void leaveWritingTime(); }}>Leave writing time</button>
+              <button className="writing-time-leave" onClick={() => { void leaveWritingMode(); }}>Exit writing mode</button>
             </div>
           </header>
           <main className="writing-time-main">
@@ -1929,9 +1875,9 @@ function SubstackView() {
       )}
       <div className="page-header">
         <div>
-          <h1 className="page-greeting">Substack</h1>
+          <h1 className="page-greeting">Writing Corner</h1>
           <p className="page-subtitle" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            Write, edit, and publish your newsletter
+            Your private place to write, edit, and prepare work for publication
             {notionDbUrl && (
               <a href={notionDbUrl} target="_blank" rel="noopener noreferrer"
                 style={{ fontSize: 12, color: "var(--accent)", textDecoration: "none", fontWeight: 500 }}>
@@ -1942,7 +1888,7 @@ function SubstackView() {
           </p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button className="writing-time-enter" onClick={() => setWritingTime(true)} disabled={!selected}>Writing time</button>
+          <button className="writing-time-enter" onClick={() => { void enterWritingMode(); }} disabled={!selected}>Full-screen writing mode</button>
           <button className="ccv2-action-btn" onClick={loadPosts} disabled={loading} style={{ alignSelf: "flex-start" }}>
             {loading ? "Refreshing…" : "↺ Refresh"}
           </button>
@@ -1977,7 +1923,7 @@ function SubstackView() {
         <div className="editor-panel">
           {selected ? (
             <>
-              <div className="editor-focus-row"><span>Drafting in Notion</span><button onClick={() => setWritingTime(true)}>Enter writing time</button></div>
+              <div className="editor-focus-row"><span>Drafting in Notion</span><button onClick={() => { void enterWritingMode(); }}>Enter writing mode</button></div>
               <input className="editor-title" value={editTitle} onChange={e => setEditTitle(e.target.value)} placeholder="Post title..." />
               <input className="editor-subtitle" value={editSubtitle} onChange={e => setEditSubtitle(e.target.value)} placeholder="Subtitle..." />
               <div className="editor-toolbar">
@@ -2268,7 +2214,7 @@ const VIEWS: { id: View; label: string }[] = [
   { id: "clients", label: "Clients" },
   { id: "finance", label: "Finance" },
   { id: "intelligence", label: "Intelligence" },
-  { id: "substack", label: "Substack" },
+  { id: "substack", label: "Writing" },
   { id: "spirit", label: "Spirit" },
   { id: "agents", label: "Agents" },
 ];
@@ -2310,7 +2256,6 @@ export default function Dashboard() {
         <div className="nav-top">
           <div className="nav-brand">Gab Real Inc</div>
           <div className="nav-top-right">
-            <SageChatWidget />
             <div className="nav-date">{formatDate()}</div>
           </div>
         </div>
@@ -2362,7 +2307,7 @@ export default function Dashboard() {
         {view === "clients"      && <ClientsView />}
         {view === "finance"      && <FinanceView />}
         {view === "intelligence" && <IntelligenceView />}
-        {view === "substack"     && <SubstackView />}
+        {view === "substack"     && <WritingCornerView />}
         {view === "spirit"       && <SpiritView />}
         {view === "agents"       && (
           <AgentsView

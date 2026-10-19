@@ -1,10 +1,10 @@
 import { Router, Request, Response } from "express";
-import { ReplitConnectors } from "@replit/connectors-sdk";
+import { DashboardConnectors } from "../lib/connectors";
 
 const router = Router();
 
 function getConnectors() {
-  return new ReplitConnectors();
+  return new DashboardConnectors();
 }
 
 // ─── GET /api/gcal/events?days=7&timeMin=ISO&timeMax=ISO ─────────────────────
@@ -137,7 +137,7 @@ router.post("/events", async (req: Request, res: Response) => {
 
 // ─── PATCH /api/gcal/events/:id — update an existing event ───────────────────
 router.patch("/events/:id", async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = String(req.params.id);
   try {
     const connectors = getConnectors();
     const calendarId = (req.body?.calendarId as string) || "primary";
@@ -160,7 +160,7 @@ router.patch("/events/:id", async (req: Request, res: Response) => {
 
 // ─── DELETE /api/gcal/events/:id — delete an event ───────────────────────────
 router.delete("/events/:id", async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = String(req.params.id);
   try {
     const connectors = getConnectors();
     const calendarId = (req.query.calendarId as string) || "primary";
