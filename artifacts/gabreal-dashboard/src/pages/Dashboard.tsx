@@ -37,7 +37,7 @@ function addDays(d: Date, n: number) { const r = new Date(d); r.setDate(r.getDat
 function weekStart(d: Date) { const r = new Date(d); const day = r.getDay(); r.setDate(r.getDate() - day + (day === 0 ? -6 : 1)); return r; }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type View = "home" | "daily" | "clients" | "finance" | "intelligence" | "substack" | "spirit" | "agents";
+type View = "home" | "clients" | "finance" | "intelligence" | "substack" | "spirit" | "agents";
 
 type HealthStatus = "green" | "yellow" | "red" | "gray";
 interface AgentHealth {
@@ -660,18 +660,6 @@ function DailyReportCard({ fullPage = false, onOpenFullReport }: { fullPage?: bo
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-function DailyReportView() {
-  return (
-    <div>
-      <div className="page-header">
-        <h1 className="page-greeting">Daily Report</h1>
-        <p className="page-subtitle">Your day at a glance, followed by every agent's report.</p>
-      </div>
-      <DailyReportCard fullPage />
     </div>
   );
 }
@@ -2386,7 +2374,6 @@ function AgentsView({ healthData, healthCheckedAt, healthLoading, healthError, o
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 const VIEWS: { id: View; label: string }[] = [
   { id: "home", label: "Home" },
-  { id: "daily", label: "Daily Report" },
   { id: "clients", label: "Clients" },
   { id: "finance", label: "Finance" },
   { id: "intelligence", label: "Intelligence" },
@@ -2480,7 +2467,6 @@ export default function Dashboard() {
 
       <main className="main">
         {view === "home"         && <HomeView />}
-        {view === "daily"        && <DailyReportView />}
         {view === "clients"      && <ClientsView />}
         {view === "finance"      && <FinanceView />}
         {view === "intelligence" && <IntelligenceView />}
