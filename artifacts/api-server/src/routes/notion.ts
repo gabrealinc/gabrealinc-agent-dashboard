@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { ReplitConnectors } from "@replit/connectors-sdk";
+import { DashboardConnectors, type ConnectorClient } from "../lib/connectors";
 
 const router = Router();
 
@@ -8,11 +8,11 @@ const DEFAULT_TASKS_DB   = process.env.NOTION_TASKS_DB_ID   ?? "222a4fa7-7eaf-81
 const DEFAULT_CLIENTS_DB = process.env.NOTION_CLIENTS_DB_ID ?? "";
 
 function getConnectors() {
-  return new ReplitConnectors();
+  return new DashboardConnectors();
 }
 
 // ─── Helper: query a Notion database ─────────────────────────────────────────
-async function queryDb(connectors: ReplitConnectors, databaseId: string, body: object = {}) {
+async function queryDb(connectors: ConnectorClient, databaseId: string, body: object = {}) {
   const res = await connectors.proxy("notion", `/v1/databases/${databaseId}/query`, {
     method: "POST",
     body: JSON.stringify(body),
@@ -92,7 +92,7 @@ function draftPatch(page: any, draftReply: string) {
   return {};
 }
 
-async function addPageComment(connectors: ReplitConnectors, pageId: string, content: string) {
+async function addPageComment(connectors: ConnectorClient, pageId: string, content: string) {
   try {
     await connectors.proxy("notion", "/v1/comments", {
       method: "POST",

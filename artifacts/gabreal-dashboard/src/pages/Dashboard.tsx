@@ -1778,10 +1778,10 @@ function IntelligenceView() {
   );
 }
 
-// ─── View: SUBSTACK ───────────────────────────────────────────────────────────
+// ─── View: WRITING CORNER ─────────────────────────────────────────────────────
 type SubstackPost = { id: string | number; title: string; subtitle: string; status: string; date: string; body: string; tags: string[]; notionUrl?: string };
 
-function SubstackView() {
+function WritingCornerView() {
   const [posts, setPosts] = useState<SubstackPost[]>(SUBSTACK_POSTS.map(p => ({ ...p, id: String(p.id), tags: [], notionUrl: "" })));
   const [selected, setSelected] = useState<SubstackPost>(posts[0]);
   const [loading, setLoading] = useState(true);
@@ -1873,16 +1873,25 @@ function SubstackView() {
     document.body.style.overflow = "hidden";
     window.setTimeout(() => writingBodyRef.current?.focus(), 0);
     const leaveOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !document.fullscreenElement) {
         document.querySelector<HTMLButtonElement>(".writing-time-leave")?.click();
       }
     };
+    const leaveWhenFullscreenCloses = () => {
+      if (!document.fullscreenElement) {
+        const snapshot = JSON.stringify([editTitle, editSubtitle, editBody]);
+        if (snapshot !== lastSavedRef.current) void handleSavePost();
+        setWritingTime(false);
+      }
+    };
     window.addEventListener("keydown", leaveOnEscape);
+    document.addEventListener("fullscreenchange", leaveWhenFullscreenCloses);
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", leaveOnEscape);
+      document.removeEventListener("fullscreenchange", leaveWhenFullscreenCloses);
     };
-  }, [writingTime, selected?.id]);
+  }, [writingTime, selected?.id, editTitle, editSubtitle, editBody]);
 
   useEffect(() => {
     if (!writingTime || !selected) return;
@@ -1897,21 +1906,33 @@ function SubstackView() {
   const filtered = statusFilter === "All" ? posts : posts.filter(p => p.status === statusFilter);
   const wordCount = editBody.trim() ? editBody.trim().split(/\s+/).length : 0;
 
-  async function leaveWritingTime() {
+  async function enterWritingMode() {
+    setWritingTime(true);
+    try {
+      await document.documentElement.requestFullscreen?.();
+    } catch {
+      // The fixed overlay is the fallback when browser fullscreen is unavailable.
+    }
+  }
+
+  async function leaveWritingMode() {
     const snapshot = JSON.stringify([editTitle, editSubtitle, editBody]);
     if (snapshot !== lastSavedRef.current) await handleSavePost();
     setWritingTime(false);
+    if (document.fullscreenElement) {
+      await document.exitFullscreen().catch(() => undefined);
+    }
   }
 
   return (
     <div>
       {writingTime && selected && (
-        <div className="writing-time-overlay" role="dialog" aria-modal="true" aria-label="Writing Time">
+        <div className="writing-time-overlay" role="dialog" aria-modal="true" aria-label="Writing Corner">
           <header className="writing-time-header">
-            <div className="writing-time-brand"><span>w.</span> writing time.</div>
+            <div className="writing-time-brand"><span>w.</span> writing corner.</div>
             <div className="writing-time-header-actions">
               <span>{saving ? "Saving..." : saveMsg || "Saved to Notion"}</span>
-              <button className="writing-time-leave" onClick={() => { void leaveWritingTime(); }}>Leave writing time</button>
+              <button className="writing-time-leave" onClick={() => { void leaveWritingMode(); }}>Exit writing mode</button>
             </div>
           </header>
           <main className="writing-time-main">
@@ -1929,9 +1950,9 @@ function SubstackView() {
       )}
       <div className="page-header">
         <div>
-          <h1 className="page-greeting">Substack</h1>
+          <h1 className="page-greeting">Writing Corner</h1>
           <p className="page-subtitle" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            Write, edit, and publish your newsletter
+            Your private place to write, edit, and prepare work for publication
             {notionDbUrl && (
               <a href={notionDbUrl} target="_blank" rel="noopener noreferrer"
                 style={{ fontSize: 12, color: "var(--accent)", textDecoration: "none", fontWeight: 500 }}>
@@ -1942,7 +1963,7 @@ function SubstackView() {
           </p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button className="writing-time-enter" onClick={() => setWritingTime(true)} disabled={!selected}>Writing time</button>
+          <button className="writing-time-enter" onClick={() => { void enterWritingMode(); }} disabled={!selected}>Full-screen writing mode</button>
           <button className="ccv2-action-btn" onClick={loadPosts} disabled={loading} style={{ alignSelf: "flex-start" }}>
             {loading ? "Refreshing…" : "↺ Refresh"}
           </button>
@@ -1977,7 +1998,7 @@ function SubstackView() {
         <div className="editor-panel">
           {selected ? (
             <>
-              <div className="editor-focus-row"><span>Drafting in Notion</span><button onClick={() => setWritingTime(true)}>Enter writing time</button></div>
+              <div className="editor-focus-row"><span>Drafting in Notion</span><button onClick={() => { void enterWritingMode(); }}>Enter writing mode</button></div>
               <input className="editor-title" value={editTitle} onChange={e => setEditTitle(e.target.value)} placeholder="Post title..." />
               <input className="editor-subtitle" value={editSubtitle} onChange={e => setEditSubtitle(e.target.value)} placeholder="Subtitle..." />
               <div className="editor-toolbar">
@@ -2268,7 +2289,7 @@ const VIEWS: { id: View; label: string }[] = [
   { id: "clients", label: "Clients" },
   { id: "finance", label: "Finance" },
   { id: "intelligence", label: "Intelligence" },
-  { id: "substack", label: "Substack" },
+  { id: "substack", label: "Writing" },
   { id: "spirit", label: "Spirit" },
   { id: "agents", label: "Agents" },
 ];
@@ -2362,7 +2383,7 @@ export default function Dashboard() {
         {view === "clients"      && <ClientsView />}
         {view === "finance"      && <FinanceView />}
         {view === "intelligence" && <IntelligenceView />}
-        {view === "substack"     && <SubstackView />}
+        {view === "substack"     && <WritingCornerView />}
         {view === "spirit"       && <SpiritView />}
         {view === "agents"       && (
           <AgentsView

@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { ReplitConnectors } from "@replit/connectors-sdk";
+import { DashboardConnectors } from "../lib/connectors";
 
 const router = Router();
 
@@ -106,7 +106,7 @@ router.get("/agent-health", async (_req: Request, res: Response) => {
   }
 
   try {
-    const connectors = new ReplitConnectors();
+    const connectors = new DashboardConnectors();
 
     // 1. Fetch the Agent Roster
     const rosterRes = await connectors.proxy("notion", `/v1/databases/${ROSTER_DB_ID}/query`, {
