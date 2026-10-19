@@ -679,6 +679,29 @@ body {
 .task-row-clickable { cursor: pointer; border-radius: 8px; transition: background 0.12s; padding-left: 6px; padding-right: 6px; margin: 0 -6px; }
 .task-row-clickable:hover { background: var(--surface-warm); }
 .task-row-open { background: var(--surface-warm); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.task-panel-notice {
+  background: rgba(255, 246, 230, 0.86);
+  border: 1px solid rgba(215, 170, 115, 0.38);
+  border-radius: 8px;
+  color: var(--text-soft);
+  font-size: 10px;
+  line-height: 1.4;
+  margin-bottom: 8px;
+  padding: 7px 9px;
+}
+.task-done-btn {
+  background: rgba(80, 160, 100, 0.1);
+  border: 1px solid rgba(80, 160, 100, 0.22);
+  border-radius: 999px;
+  color: #407840;
+  cursor: pointer;
+  flex-shrink: 0;
+  font: 650 10px/1 'Inter', sans-serif;
+  padding: 6px 8px;
+  white-space: nowrap;
+}
+.task-done-btn:hover { background: rgba(80, 160, 100, 0.18); }
+.task-done-btn:disabled { cursor: default; opacity: 0.48; }
 .task-client-chip {
   font-size: 11px; font-weight: 600;
   padding: 2px 8px; border-radius: 20px;
