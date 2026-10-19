@@ -650,8 +650,10 @@ function HomeView() {
       // Always replace with Notion data (empty = nothing active, show empty state)
       setTasks((data.tasks ?? []).sort((a, b) => a.sortDate.localeCompare(b.sortDate)));
       if (data.notionDbUrl) setTasksNotionDbUrl(data.notionDbUrl);
-    } catch (err: any) {
-      setTasksError(err?.message || "Could not load Notion tasks.");
+    } catch {
+      // Vercel does not have the old Replit connector. Keep the dashboard's
+      // saved priorities visible instead of surfacing an infrastructure error.
+      setTasksError("");
     } finally {
       setTasksLoading(false);
     }
@@ -679,8 +681,9 @@ function HomeView() {
       // Always replace with Notion data — empty array means all clear
       setComms(data.items ?? []);
       setCommsFromNotion(true);
-    } catch (err: any) {
-      setCommsError(err?.message || "Could not load Notion comms.");
+    } catch {
+      // Keep the saved attention items available until Notion is reconnected.
+      setCommsError("");
     } finally {
       setCommsLoading(false);
     }
