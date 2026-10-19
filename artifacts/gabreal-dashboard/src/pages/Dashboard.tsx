@@ -82,20 +82,15 @@ type Task = {
   subtasks?: Task[];
 };
 
-const STATUS_CYCLE: Record<string, string> = {
-  "On Deck":    "To Do",
-  "To Do":      "In Progress",
-  "In Progress":"In Review",
-  "In Review":  "On Deck",
-};
-
 const TASKS_SEED: Task[] = [
-  { id: 1, notionId: "task-001", name: "Add Favicon to Luxx Site", date: "Jun 4", sortDate: "2026-06-04", status: "To Do", client: "Luxx", notes: "Use the square version of the new logo — export at 32×32 and 180×180." },
-  { id: 2, notionId: "task-002", name: "Send Issa Dashboard", date: "Jun 4", sortDate: "2026-06-04", status: "To Do", client: "Issa Rae Media", notes: "Send the campaign analytics PDF and Notion dashboard link." },
-  { id: 3, notionId: "task-003", name: "Luna Vita Brand Deck", date: "Jun 4", sortDate: "2026-06-04", status: "In Progress", client: "Luna Vita", notes: "First full draft due Friday EOD. Kea is waiting — she asked about timeline this morning." },
-  { id: 4, notionId: "task-004", name: "LACES Klaviyo Flow", date: "Jun 6", sortDate: "2026-06-06", status: "In Progress", client: "LACES", notes: "Send updated proposal to Jeff by Thursday. Cover the welcome series + win-back flow." },
-  { id: 5, notionId: "task-005", name: "Create Labels for All Products", date: "Jun 11", sortDate: "2026-06-11", status: "To Do", client: "Luna Vita", notes: "Print-ready files needed — 3×2 in, CMYK, 300dpi. Check with Kea on label copy." },
+  { id: 1, notionId: "3fea4fa7-7eaf-817f-bea8-eb52e98d816e", name: "Book cruise for Mom's clients", date: "Oct 19", sortDate: "2026-10-19", status: "To Do", client: "", notes: "Highest priority in Notion.", notionUrl: "https://app.notion.com/3fea4fa77eaf817fbea8eb52e98d816e" },
+  { id: 2, notionId: "3dba4fa7-7eaf-8107-a469-caacf37d8938", name: "Build Your AI Operating System", date: "Sep 25", sortDate: "2026-09-25", status: "In Progress", client: "", notes: "High priority in Notion.", notionUrl: "https://app.notion.com/3dba4fa77eaf8107a469caacf37d8938" },
+  { id: 3, notionId: "3f0a4fa7-7eaf-81e6-890a-e027a172c41d", name: "Prepare Midnight AI agents for Cody and Pamela", date: "Oct 9", sortDate: "2026-10-09", status: "On Hold", client: "", notes: "High priority and currently blocked in Notion.", notionUrl: "https://app.notion.com/3f0a4fa77eaf81e6890ae027a172c41d" },
+  { id: 4, notionId: "3dba4fa7-7eaf-8158-9aa6-e59f6b09e8c2", name: "Publish LinkedIn launch post", date: "", sortDate: "9999-12-31", status: "To Do", client: "", notes: "High priority in Notion.", notionUrl: "https://app.notion.com/3dba4fa77eaf81589aa6e59f6b09e8c2" },
+  { id: 5, notionId: "3f1a4fa7-7eaf-801b-8996-c6195f2a4bfb", name: "From Scratch Social Media Posts", date: "", sortDate: "9999-12-31", status: "Continuous", client: "", notes: "Highest priority continuous work in Notion.", notionUrl: "https://app.notion.com/3f1a4fa77eaf801b8996c6195f2a4bfb" },
 ];
+
+const TASKS_NOTION_URL = "https://app.notion.com/p/222a4fa77eaf812b8707d4f1da02d778";
 
 const INVOICES = [
   { client: "Luna Vita", project: "Brand Identity", amount: "$4,800", date: "May 28", status: "Paid" },
@@ -369,7 +364,7 @@ function InvoiceStatus({ s }: { s: string }) {
 }
 
 // ─── Priorities panel ─────────────────────────────────────────────────────────
-const ACTIVE_STATUSES = ["On Deck", "To Do", "In Progress", "On Hold"] as const;
+const TASK_STATUS_OPTIONS = ["On Deck", "To Do", "In Progress", "On Hold", "Done"] as const;
 const DONE_STATUSES = new Set(["done", "complete", "completed", "resolved", "closed", "archived", "dismissed", "filed"]);
 
 function isActiveTaskStatus(status: string) {
@@ -383,16 +378,23 @@ function pillClass(status: string) {
   return "pill-todo";
 }
 
-function PrioritiesPanel({ tasks = [], setTasks, loading }: {
+function PrioritiesPanel({ tasks = [], setTasks, loading, liveSync }: {
   tasks?: Task[];
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
   loading: boolean;
+  liveSync: boolean;
 }) {
   const [expanded, setExpanded] = useState<number | null>(null);
   const [syncing, setSyncing] = useState<Record<number, "status" | "date" | null>>({});
   const [syncError, setSyncError] = useState<number | null>(null);
+  const [notice, setNotice] = useState("");
+  const [localDoneIds, setLocalDoneIds] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try { return new Set(JSON.parse(window.localStorage.getItem("dashboard-completed-tasks") ?? "[]")); }
+    catch { return new Set(); }
+  });
 
-  const allActive = tasks.filter(t => isActiveTaskStatus(t.status));
+  const allActive = tasks.filter(t => isActiveTaskStatus(t.status) && !localDoneIds.has(t.notionId));
 
   // Build parent→children map so subtasks nest under their parent
   const taskByNotionId = new Map(allActive.map(t => [t.notionId, t]));
@@ -418,10 +420,24 @@ function PrioritiesPanel({ tasks = [], setTasks, loading }: {
     e.stopPropagation();
     if (task.status === next) return;
     setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: next } : t));
+    if (next === "Done") {
+      setLocalDoneIds(prev => {
+        const updated = new Set(prev).add(task.notionId);
+        window.localStorage.setItem("dashboard-completed-tasks", JSON.stringify([...updated]));
+        return updated;
+      });
+      setExpanded(null);
+    }
     setSyncing(prev => ({ ...prev, [task.id]: "status" }));
     setSyncError(null);
+    if (!liveSync) {
+      setNotice(next === "Done" ? "Marked done on this dashboard. Notion live sync still needs reconnecting." : "Updated on this dashboard. Notion live sync still needs reconnecting.");
+      setSyncing(prev => ({ ...prev, [task.id]: null }));
+      return;
+    }
     try {
       await patchNotion(task, { status: next });
+      setNotice(next === "Done" ? "Completed and saved to Notion." : "Status saved to Notion.");
     } catch {
       setSyncError(task.id);
       setTimeout(() => setSyncError(null), 2500);
@@ -449,6 +465,7 @@ function PrioritiesPanel({ tasks = [], setTasks, loading }: {
 
   return (
     <>
+      {notice && <div className="task-panel-notice">{notice}</div>}
       {loading && (
         <div style={{ fontSize: 12, color: "var(--text-xsoft)", padding: "4px 0 8px" }}>Syncing from Notion…</div>
       )}
@@ -476,6 +493,9 @@ function PrioritiesPanel({ tasks = [], setTasks, loading }: {
               <span className={`task-status-pill ${pillClass(t.status)} ${isSyncing ? "pill-syncing" : ""}`}>
                 {isSyncing === "status" ? "…" : t.status}
               </span>
+              <button className="task-done-btn" type="button" onClick={e => changeStatus(t, "Done", e)} disabled={!!isSyncing}>
+                ✓ Done
+              </button>
               <span className={`task-expand-arrow ${expanded === t.id ? "open" : ""}`}>›</span>
             </div>
 
@@ -529,7 +549,7 @@ function PrioritiesPanel({ tasks = [], setTasks, loading }: {
                 <div className="task-detail-row" style={{ alignItems: "flex-start", flexDirection: "column", gap: 6 }}>
                   <span className="task-detail-label">Status</span>
                   <div className="task-status-row" style={{ marginTop: 0 }}>
-                    {ACTIVE_STATUSES.map(s => (
+                    {TASK_STATUS_OPTIONS.map(s => (
                       <button
                         key={s}
                         className={`task-status-option ${t.status === s ? "active" : ""}`}
@@ -710,12 +730,11 @@ function HomeView() {
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
   // ── Tasks (shared by PrioritiesPanel and QuickStats) ──────────────────────
-  const [tasks, setTasks] = useState<Task[]>(
-    [...TASKS_SEED].sort((a, b) => a.sortDate.localeCompare(b.sortDate))
-  );
+  const [tasks, setTasks] = useState<Task[]>([...TASKS_SEED]);
   const [tasksLoading, setTasksLoading] = useState(true);
   const [tasksError, setTasksError] = useState("");
-  const [tasksNotionDbUrl, setTasksNotionDbUrl] = useState("");
+  const [tasksNotionDbUrl, setTasksNotionDbUrl] = useState(TASKS_NOTION_URL);
+  const [tasksLiveSync, setTasksLiveSync] = useState(false);
 
   async function loadTasks() {
     setTasksLoading(true);
@@ -725,10 +744,11 @@ function HomeView() {
       // Always replace with Notion data (empty = nothing active, show empty state)
       setTasks((data.tasks ?? []).sort((a, b) => a.sortDate.localeCompare(b.sortDate)));
       if (data.notionDbUrl) setTasksNotionDbUrl(data.notionDbUrl);
+      setTasksLiveSync(true);
     } catch {
-      // Vercel does not have the old Replit connector. Keep the dashboard's
-      // saved priorities visible instead of surfacing an infrastructure error.
+      // Keep the latest verified Notion snapshot visible when live sync is unavailable.
       setTasksError("");
+      setTasksLiveSync(false);
     } finally {
       setTasksLoading(false);
     }
@@ -880,7 +900,11 @@ function HomeView() {
                   )}
                 </div>
                 <div className="card-subtitle" style={{ marginBottom: 0 }}>
-                  {tasksLoading ? "syncing from Notion…" : `${tasks.filter(t => isActiveTaskStatus(t.status)).length} active tasks`}
+                  {tasksLoading
+                    ? "checking Notion…"
+                    : tasksLiveSync
+                      ? `${tasks.filter(t => isActiveTaskStatus(t.status)).length} active · live from Notion`
+                      : `${tasks.filter(t => isActiveTaskStatus(t.status)).length} priorities · latest Notion snapshot`}
                 </div>
               </div>
               <RefreshBtn onClick={loadTasks} />
@@ -889,7 +913,7 @@ function HomeView() {
               {tasksError && (
                 <div className="error-banner" style={{ marginBottom: 10 }}>{tasksError}</div>
               )}
-              <PrioritiesPanel tasks={tasks} setTasks={setTasks} loading={tasksLoading} />
+              <PrioritiesPanel tasks={tasks} setTasks={setTasks} loading={tasksLoading} liveSync={tasksLiveSync} />
             </div>
           </div>
         </div>
