@@ -382,8 +382,8 @@ function PrioritiesPanel({ tasks = [], setTasks, loading, liveSync }: {
     await apiFetch(`/notion/tasks/${task.notionId}`, { method: "PATCH", body: JSON.stringify(body) });
   }
 
-  async function changeStatus(task: Task, next: string, e: React.MouseEvent) {
-    e.stopPropagation();
+  async function changeStatus(task: Task, next: string, e?: React.SyntheticEvent) {
+    e?.stopPropagation();
     if (task.status === next) return;
     setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: next } : t));
     if (next === "Done") {
@@ -456,12 +456,17 @@ function PrioritiesPanel({ tasks = [], setTasks, loading, liveSync }: {
                 )}
               </div>
               <div className="task-date">{t.date}</div>
-              <span className={`task-status-pill ${pillClass(t.status)} ${isSyncing ? "pill-syncing" : ""}`}>
-                {isSyncing === "status" ? "…" : t.status}
-              </span>
-              <button className="task-done-btn" type="button" onClick={e => changeStatus(t, "Done", e)} disabled={!!isSyncing}>
-                ✓ Done
-              </button>
+              <select
+                className={`task-status-select ${pillClass(t.status)} ${isSyncing ? "pill-syncing" : ""}`}
+                value={t.status}
+                aria-label={`Update status for ${t.name}`}
+                disabled={!!isSyncing}
+                onClick={e => e.stopPropagation()}
+                onChange={e => changeStatus(t, e.target.value, e)}
+              >
+                {TASK_STATUS_OPTIONS.map(status => <option key={status} value={status}>{status}</option>)}
+                {!TASK_STATUS_OPTIONS.includes(t.status as typeof TASK_STATUS_OPTIONS[number]) && <option value={t.status}>{t.status}</option>}
+              </select>
               <span className={`task-expand-arrow ${expanded === t.id ? "open" : ""}`}>›</span>
             </div>
 
