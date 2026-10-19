@@ -1792,6 +1792,9 @@ function SubstackView() {
   const [editBody, setEditBody] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
+  const [writingTime, setWritingTime] = useState(false);
+  const writingBodyRef = useRef<HTMLTextAreaElement>(null);
+  const lastSavedRef = useRef("");
 
   // Sync editor fields when selected post changes
   useEffect(() => {
@@ -1800,6 +1803,7 @@ function SubstackView() {
       setEditSubtitle(selected.subtitle ?? "");
       setEditBody(selected.body ?? "");
       setSaveMsg("");
+      lastSavedRef.current = JSON.stringify([selected.title ?? "", selected.subtitle ?? "", selected.body ?? ""]);
     }
   }, [selected?.id]);
 
@@ -1829,6 +1833,7 @@ function SubstackView() {
       ));
       setSelected(prev => prev ? { ...prev, title: editTitle, subtitle: editSubtitle, body: editBody, status: updatedStatus } : prev);
       setSaveMsg(newStatus === "Published" ? "✓ Published to Notion" : "✓ Draft saved");
+      lastSavedRef.current = JSON.stringify([editTitle, editSubtitle, editBody]);
     } catch (err: any) {
       setSaveMsg("⚠ " + (err.message ?? "Save failed"));
     } finally {
@@ -1862,11 +1867,66 @@ function SubstackView() {
 
   useEffect(() => { loadPosts(); }, []);
 
+  useEffect(() => {
+    if (!writingTime || !selected) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.setTimeout(() => writingBodyRef.current?.focus(), 0);
+    const leaveOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        document.querySelector<HTMLButtonElement>(".writing-time-leave")?.click();
+      }
+    };
+    window.addEventListener("keydown", leaveOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", leaveOnEscape);
+    };
+  }, [writingTime, selected?.id]);
+
+  useEffect(() => {
+    if (!writingTime || !selected) return;
+    const snapshot = JSON.stringify([editTitle, editSubtitle, editBody]);
+    if (snapshot === lastSavedRef.current) return;
+    setSaveMsg("Saving after you pause...");
+    const timer = window.setTimeout(() => { void handleSavePost(); }, 1800);
+    return () => window.clearTimeout(timer);
+  }, [writingTime, selected?.id, editTitle, editSubtitle, editBody]);
+
   const statuses = ["All", ...Array.from(new Set(posts.map(p => p.status)))];
   const filtered = statusFilter === "All" ? posts : posts.filter(p => p.status === statusFilter);
+  const wordCount = editBody.trim() ? editBody.trim().split(/\s+/).length : 0;
+
+  async function leaveWritingTime() {
+    const snapshot = JSON.stringify([editTitle, editSubtitle, editBody]);
+    if (snapshot !== lastSavedRef.current) await handleSavePost();
+    setWritingTime(false);
+  }
 
   return (
     <div>
+      {writingTime && selected && (
+        <div className="writing-time-overlay" role="dialog" aria-modal="true" aria-label="Writing Time">
+          <header className="writing-time-header">
+            <div className="writing-time-brand"><span>w.</span> writing time.</div>
+            <div className="writing-time-header-actions">
+              <span>{saving ? "Saving..." : saveMsg || "Saved to Notion"}</span>
+              <button className="writing-time-leave" onClick={() => { void leaveWritingTime(); }}>Leave writing time</button>
+            </div>
+          </header>
+          <main className="writing-time-main">
+            <p className="writing-time-kicker">A quiet place for the thought you are following</p>
+            <input className="writing-time-title" value={editTitle} onChange={e => setEditTitle(e.target.value)} placeholder="Untitled piece" aria-label="Post title" />
+            <input className="writing-time-subtitle" value={editSubtitle} onChange={e => setEditSubtitle(e.target.value)} placeholder="A subtitle, if it needs one" aria-label="Post subtitle" />
+            <textarea ref={writingBodyRef} className="writing-time-body" value={editBody} onChange={e => setEditBody(e.target.value)} placeholder="Start wherever you are..." aria-label="Post body" />
+            <footer className="writing-time-footer">
+              <span>{wordCount} {wordCount === 1 ? "word" : "words"}</span>
+              <span>Press Escape to return to the dashboard</span>
+            </footer>
+          </main>
+          <div className="writing-time-plant" aria-hidden="true"><i/><i/><i/><i/><b/></div>
+        </div>
+      )}
       <div className="page-header">
         <div>
           <h1 className="page-greeting">Substack</h1>
@@ -1881,9 +1941,12 @@ function SubstackView() {
             {loading && <span style={{ fontSize: 11, color: "var(--text-xsoft)" }}>syncing…</span>}
           </p>
         </div>
-        <button className="ccv2-action-btn" onClick={loadPosts} disabled={loading} style={{ alignSelf: "flex-start" }}>
-          {loading ? "Refreshing…" : "↺ Refresh"}
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="writing-time-enter" onClick={() => setWritingTime(true)} disabled={!selected}>Writing time</button>
+          <button className="ccv2-action-btn" onClick={loadPosts} disabled={loading} style={{ alignSelf: "flex-start" }}>
+            {loading ? "Refreshing…" : "↺ Refresh"}
+          </button>
+        </div>
       </div>
       <div className="substack-layout">
         <div className="post-list">
@@ -1914,6 +1977,7 @@ function SubstackView() {
         <div className="editor-panel">
           {selected ? (
             <>
+              <div className="editor-focus-row"><span>Drafting in Notion</span><button onClick={() => setWritingTime(true)}>Enter writing time</button></div>
               <input className="editor-title" value={editTitle} onChange={e => setEditTitle(e.target.value)} placeholder="Post title..." />
               <input className="editor-subtitle" value={editSubtitle} onChange={e => setEditSubtitle(e.target.value)} placeholder="Subtitle..." />
               <div className="editor-toolbar">
