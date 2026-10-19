@@ -2253,107 +2253,50 @@ function AgentHealthCard({ a }: { a: AgentHealth }) {
   );
 }
 
-function AgentsView({ healthData, healthCheckedAt, healthLoading, healthError, onRefresh }: {
-  healthData: AgentHealth[];
-  healthCheckedAt: string | null;
-  healthLoading: boolean;
-  healthError: string | null;
-  onRefresh: () => void;
-}) {
-  const hasLiveData = healthData.length > 0;
+function AgentsView() {
+  const recentReports = ["Peggy", "Amber", "Mae", "Nancy", "Milton", "Elle", "Olivia"]
+    .map(name => AGENTS.find(agent => agent.name === name))
+    .filter((agent): agent is Agent => Boolean(agent));
 
   return (
     <div>
-      <div className="page-header" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+      <div className="page-header">
         <div>
-          <h1 className="page-greeting">Agent Health</h1>
-          <p className="page-subtitle">
-            {healthCheckedAt
-              ? `Last checked ${timeAgo(healthCheckedAt)}`
-              : "Your multi-agent operating system"}
-          </p>
+          <h1 className="page-greeting">Agent Reports</h1>
+          <p className="page-subtitle">The latest verified report available from each agent in Notion.</p>
         </div>
-        <button className="ccv2-action-btn" onClick={onRefresh} disabled={healthLoading} style={{ alignSelf: "center" }}>
-          {healthLoading ? "Checking…" : "↺ Refresh"}
-        </button>
       </div>
 
-      {healthError === "notion_unreachable" && (
-        <div style={{
-          background: "#FFF3E0", border: "1px solid #FFB347", borderRadius: 10,
-          padding: "10px 16px", marginBottom: 16, fontSize: 13,
-          fontFamily: "Inter, sans-serif", color: "#7A4010",
-        }}>
-          ⚠ Can't reach Notion right now — showing last known data. Check your integration connection.
-        </div>
-      )}
-
-      {healthLoading && !hasLiveData && (
-        <div style={{ fontSize: 13, color: "var(--text-xsoft)", padding: "20px 0", fontFamily: "Inter, sans-serif" }}>
-          Checking agent health…
-        </div>
-      )}
-
-      {hasLiveData && (
-        <div className="agents-grid" style={{ marginBottom: 20 }}>
-          {healthData.map(a => <AgentHealthCard key={a.name} a={a} />)}
-        </div>
-      )}
-
-      {!hasLiveData && !healthLoading && (
-        <div className="agents-grid" style={{ marginBottom: 20 }}>
-          {AGENTS.map((a, i) => (
-            <div className="agent-card" key={i}>
-              <div className="agent-header">
-                <div className="agent-name-row">
-                  <div className={`agent-dot dot-${a.status}`} />
-                  <div>
-                    <div className="agent-name">{a.name}</div>
-                    <div className="agent-role">{a.role}</div>
-                  </div>
+      <div style={{ display: "grid", gap: 14 }}>
+        {recentReports.map(agent => (
+          <article className="card" key={agent.name} style={{ marginBottom: 0 }}>
+            <div className="card-header" style={{ alignItems: "flex-start", gap: 16 }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+                  <span className={`agent-dot dot-${agent.status}`} />
+                  <strong style={{ fontSize: 17 }}>{agent.name}</strong>
+                  <span style={{ color: "var(--text-xsoft)", fontSize: 12 }}>{agent.role}</span>
                 </div>
-                <span className={`agent-status-badge status-${a.status}`}>
-                  {a.status.charAt(0).toUpperCase() + a.status.slice(1)}
-                </span>
+                <div className="card-subtitle" style={{ margin: 0 }}>{agent.last}</div>
               </div>
-              <div className="agent-desc">{a.desc}</div>
-              <div className="agent-last">Last active: {a.last}</div>
+              {agent.notionUrl && (
+                <a className="ccv2-action-btn" href={agent.notionUrl} target="_blank" rel="noreferrer" style={{ textDecoration: "none", flexShrink: 0 }}>
+                  Open report in Notion ↗
+                </a>
+              )}
             </div>
-          ))}
-        </div>
-      )}
-
-      <div className="card">
-        <div className="card-label">Mac Mini · Remote Control</div>
-        <div className="card-subtitle">Wake and access your agent hub from anywhere</div>
-        <div className="mac-mini-btns">
-          <button className="btn-mac" onClick={() => alert("Sending Wake-on-LAN signal…\n\nSet MAC_MINI_TAILSCALE_IP and MAC_MINI_MAC_ADDRESS in Replit Secrets to activate.")}>
-            <div className="btn-mac-icon">🌐</div>
-            <span className="btn-mac-label">Wake Mac Mini</span>
-            <div className="btn-mac-sub">Send WoL magic packet via Tailscale</div>
-          </button>
-          <button className="btn-mac" onClick={() => alert("Configure MAC_MINI_TAILSCALE_IP in Replit Secrets.")}>
-            <div className="btn-mac-icon">🖥</div>
-            <span className="btn-mac-label">Open Screen Share</span>
-            <div className="btn-mac-sub">Remote session via Tailscale</div>
-          </button>
-        </div>
+            <p style={{ color: "var(--text-soft)", fontSize: 14, lineHeight: 1.65, margin: "8px 0 12px" }}>{agent.report.summary}</p>
+            <div style={{ display: "grid", gap: 7 }}>
+              {agent.report.items.map((item, index) => (
+                <div key={`${agent.name}-${index}`} style={{ background: "var(--surface-warm)", borderRadius: 9, padding: "9px 11px" }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text)", marginBottom: 3 }}>{item.label}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-soft)", lineHeight: 1.5 }}>{item.note}</div>
+                </div>
+              ))}
+            </div>
+          </article>
+        ))}
       </div>
-
-      {!hasLiveData && (
-        <div className="card">
-          <div className="card-label">Agent Activity</div>
-          <div style={{ marginTop: 10 }}>
-            {ACTIVITY_LOG.map((e, i) => (
-              <div className="activity-entry" key={i}>
-                <span className="activity-time">{e.time}</span>
-                <span className="activity-dot" style={{ background: e.color }} />
-                <span className="activity-text">{e.text}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -2455,15 +2398,7 @@ export default function Dashboard() {
         {view === "clients"      && <ClientsView />}
         {view === "finance"      && <FinanceView />}
         {view === "substack"     && <WritingCornerView />}
-        {view === "agents"       && (
-          <AgentsView
-            healthData={healthData}
-            healthCheckedAt={healthCheckedAt}
-            healthLoading={healthLoading}
-            healthError={healthError}
-            onRefresh={fetchHealth}
-          />
-        )}
+        {view === "agents"       && <AgentsView />}
       </main>
     </div>
   );
