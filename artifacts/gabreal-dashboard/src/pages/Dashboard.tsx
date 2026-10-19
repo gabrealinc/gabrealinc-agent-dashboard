@@ -60,13 +60,8 @@ interface AgentHealthResponse {
   message?: string;
 }
 
-// ─── Static mock fallback data ────────────────────────────────────────────────
-const SCHEDULE_MOCK = [
-  { time: "6:00 AM", event: "Morning Routine" },
-  { time: "10:00 AM", event: "LACES Strategy Call" },
-  { time: "2:30 PM", event: "Ryan Lands" },
-  { time: "4:00 PM", event: "Luna Vita Check-in" },
-];
+// Empty unless the Google Calendar API returns real events.
+const SCHEDULE_FALLBACK: { time: string; event: string }[] = [];
 
 type Task = {
   id: number;
@@ -195,121 +190,92 @@ type AgentActivity = { time: string; label: string; note: string; tag: "URGENT" 
 type Agent = {
   name: string; role: string; status: "active" | "scheduled" | "idle";
   desc: string; last: string;
+  notionUrl?: string;
   report: { summary: string; items: AgentActivity[] };
 };
 
 const AGENTS: Agent[] = [
   {
     name: "Amber", role: "Communication Manager", status: "active",
-    desc: "Monitors Gmail, Slack, and WhatsApp. Classifies, drafts replies, executes approved dashboard actions.",
-    last: "12 minutes ago · 3 items in queue",
+    desc: "Latest verified communication report from Notion.",
+    last: "Oct 16 · Complete",
+    notionUrl: "https://app.notion.com/3fba4fa77eaf81868b03d276564ad907",
     report: {
-      summary: "3 items in your queue need attention. 1 urgent client reply, 1 proposal approval, and 1 vendor FYI flagged from this morning.",
-      items: [
-        { time: "12 min ago", label: "Gmail · Kea (Luna Vita)", note: "Replied asking about the brand deck timeline. Draft ready for review.", tag: "URGENT" },
-        { time: "1 hr ago",   label: "Klaviyo proposal · Jeff (LACES)", note: "Updated flow proposal ready — approve to send.", tag: "ACTION" },
-        { time: "3 hrs ago",  label: "Printful vendor quote", note: "Merch pricing for Luna Vita launch. No action needed.", tag: "FYI" },
-      ],
+      summary: "Four clean runs. At 3:50 PM, four open items were unchanged, two newsletter threads and one promo thread were filed, and nothing was sent or created.",
+      items: [{ time: "Oct 16", label: "Amber · 2026-10-16 06:33 PT", note: "Latest verified Notion report. Status: Complete.", tag: "DONE" }],
     },
   },
   {
     name: "Mae", role: "System Librarian", status: "active",
-    desc: "Audits Notion, cleans stale data, syncs file structure, ensures everything other agents read is accurate and current.",
-    last: "45 minutes ago · All systems nominal",
+    desc: "Latest verified weekly work log from Notion.",
+    last: "Oct 12–16 · Complete",
+    notionUrl: "https://app.notion.com/3fba4fa77eaf815d97e7ef26166631e4",
     report: {
-      summary: "Morning audit complete. All Notion databases clean, no stale tasks or duplicate pages found. File structure synced.",
-      items: [
-        { time: "45 min ago", label: "Notion audit complete", note: "7 databases scanned. 0 issues found.", tag: "DONE" },
-        { time: "6:30 AM",    label: "Removed 2 duplicate client pages", note: "Luna Vita sandbox and draft merged into main client page.", tag: "DONE" },
-        { time: "Yesterday",  label: "LACES folder reorganised", note: "Assets, contracts, and briefs moved to standardised structure.", tag: "DONE" },
-      ],
+      summary: "Midnight's new six-call package is active and Christopher Mello accepted a recurring AI Sync, but the credit ledger needs confirmation before Monday's call and the agent-build blocker remains open.",
+      items: [{ time: "Oct 12–16", label: "Midnight Consulting Group Weekly Work Log", note: "Latest verified Notion report. Status: Complete.", tag: "DONE" }],
     },
   },
   {
-    name: "Elle", role: "Highest Self + Wellness", status: "active",
-    desc: "Daily morning ritual — cycle phase guidance, meals, movement, nervous system support, and spiritual practice.",
-    last: "7:00 AM · Day 22 Luteal",
+    name: "Elle", role: "Life + Business Alignment", status: "idle",
+    desc: "Latest verified daily alignment report from Notion.",
+    last: "Oct 11 · Latest available",
+    notionUrl: "https://app.notion.com/3f6a4fa77eaf81d2b550e7d03c70b4a9",
     report: {
-      summary: "Day 22 · Luteal phase. Energy turns inward — finishing > starting. High cortisol window 9–11am. Protect the afternoon.",
-      items: [
-        { time: "7:00 AM", label: "Phase guidance delivered", note: "Luteal day 22. Soft Power theme. Intention: finish what's in motion.", tag: "DONE" },
-        { time: "7:00 AM", label: "Movement rec: slow yoga or walk", note: "No HIIT this week — nervous system in recovery mode.", tag: "FYI" },
-        { time: "7:00 AM", label: "Nutrition note", note: "Prioritise magnesium + complex carbs today. Reduce caffeine after 12pm.", tag: "FYI" },
-      ],
+      summary: "Keep Sunday open for family, rest, or more raw writing if it feels good. Count 'I Already Know What I Want' as progress and leave AI course Module 1 and client maintenance for next week.",
+      items: [{ time: "Oct 11", label: "Elle · Daily Alignment", note: "Latest verified Notion report. No later report was found.", tag: "FYI" }],
     },
   },
   {
     name: "Nancy", role: "Research Analyst", status: "scheduled",
-    desc: "Monitors client industries, AI developments, market trends, and business opportunities. Posts daily intelligence brief.",
-    last: "7:30 AM · 3 items surfaced",
+    desc: "Latest verified research intelligence report from Notion.",
+    last: "Oct 15 · Complete",
+    notionUrl: "https://app.notion.com/3faa4fa77eaf81a4ae18dc2b5137091f",
     report: {
-      summary: "3 intelligence items surfaced this morning. 1 direct opportunity flagged for your review — a brand partnership call from a peer agency.",
-      items: [
-        { time: "7:30 AM", label: "Opportunity · Agency partnership", note: "Mila & Co looking for a creative sub-contractor for Q3. Warm intro available.", tag: "FLAG" },
-        { time: "7:30 AM", label: "AI trend · Canva launches AI video", note: "Relevant to Luna Vita content strategy. May shift their production budget.", tag: "FYI" },
-        { time: "7:30 AM", label: "Industry · DTC beauty CPMs up 18%", note: "Luna Vita and LACES ad budgets may need reforecast for Q3.", tag: "FYI" },
-      ],
-    },
-  },
-  {
-    name: "Dave", role: "CFO", status: "scheduled",
-    desc: "QuickBooks, Gusto, GHL, Stripe — monitors business and personal finances, flags overdue invoices and tax deadlines.",
-    last: "7:45 AM · 1 flag: $5,000 pending",
-    report: {
-      summary: "1 flag this morning: LACES invoice #1047 ($5,000) is 4 days past due. All other invoices current. Payroll runs Friday — no issues.",
-      items: [
-        { time: "7:45 AM", label: "Invoice overdue · LACES #1047", note: "$5,000 — 4 days past due. Nudge sent via GHL. Follow up if no response by EOD.", tag: "FLAG" },
-        { time: "7:45 AM", label: "Payroll · Friday $3,200", note: "Gusto scheduled. Sufficient balance confirmed.", tag: "DONE" },
-        { time: "7:45 AM", label: "Monthly revenue · $24,850 Jun MTD", note: "On track for $28k target. 3 invoices outstanding.", tag: "FYI" },
-      ],
+      summary: "Pew's new online-community data and recent studies show rising interest in trusted human voices, hands-on hobbies, and hybrid digital-to-in-person connection alongside AI adoption.",
+      items: [{ time: "Oct 15", label: "Nancy · Daily Research & Intelligence", note: "Latest verified Notion report. Status: Complete.", tag: "DONE" }],
     },
   },
   {
     name: "Peggy", role: "Executive Partner", status: "active",
-    desc: "Morning standup, daily priorities, opportunity scan. Reads all other agent reports and delivers your 8am brief to Slack.",
-    last: "8:02 AM · Brief delivered to Slack",
+    desc: "Latest verified Peggy report from Notion.",
+    last: "Oct 16 · Evening Closeout · Complete",
+    notionUrl: "https://app.notion.com/p/3fca4fa77eaf8136ac36c76815764420?pvs=204",
     report: {
-      summary: "Good morning brief delivered at 8:02am. 4 meetings today, 3 priority tasks, 1 opportunity flagged by Nancy. Amber has 3 items needing your approval.",
+      summary: "Offer guardrails and course direction sharpened; creative and care work moved; course production, runway facts, and scheduler reliability remain the main open loops.",
       items: [
-        { time: "8:02 AM", label: "Morning brief sent to Slack", note: "All 7 agent reports compiled. 4 action items surfaced for you.", tag: "DONE" },
-        { time: "8:02 AM", label: "Opportunity flagged", note: "Nancy flagged a brand partnership lead — review in Intelligence tab.", tag: "FLAG" },
-        { time: "8:02 AM", label: "Highest priority today", note: "Luna Vita brand deck — Kea is waiting. Target: send draft by EOD Friday.", tag: "ACTION" },
+        { time: "Oct 16", label: "Course direction", note: "Build Your AI OS remains evergreen and self-paced. The next useful unit is Module 1.", tag: "ACTION" },
+        { time: "Oct 16", label: "Runway", note: "Financial runway remains the highest personal-business risk and needs facts.", tag: "URGENT" },
+        { time: "Oct 16", label: "Agent reliability", note: "Scheduler reliability remains an open issue across several agents.", tag: "FLAG" },
       ],
     },
   },
   {
     name: "Milton", role: "Meeting Intelligence", status: "idle",
-    desc: "Pulls from Granola, processes meeting transcripts, extracts action items, and proposes tasks to dashboard at 5pm.",
-    last: "Yesterday 5:02 PM · 3 tasks proposed",
+    desc: "Latest verified daily log from Notion.",
+    last: "Oct 13 · Partial",
+    notionUrl: "https://app.notion.com/3f8a4fa77eaf81d8bb4ee0bc8b2ae7c8",
     report: {
-      summary: "Yesterday's 5pm run processed 2 meetings. 3 action items proposed to dashboard — 2 accepted, 1 pending. Next run at 5pm today.",
-      items: [
-        { time: "Yesterday 5:02 PM", label: "LACES strategy call processed", note: "Extracted: send Klaviyo proposal, book next call, share deck draft.", tag: "DONE" },
-        { time: "Yesterday 5:02 PM", label: "Ryan Lands check-in processed", note: "1 action item: follow up on contract renewal by Jun 12.", tag: "DONE" },
-        { time: "Next run",          label: "Scheduled for 5:00 PM today", note: "Will process today's Luna Vita and Ryan Lands meetings.", tag: "FYI" },
-      ],
+      summary: "Required Yesenia meeting QA writes remain blocked. Midnight approved work is waiting on source inputs, and the checkpoint is unchanged.",
+      items: [{ time: "Oct 13", label: "Milton · Daily Log", note: "Latest verified Notion report. Status: Partial.", tag: "FLAG" }],
     },
   },
   {
-    name: "Lenny", role: "Legal / HR", status: "idle",
-    desc: "Weekly legal, tax, and HR compliance check — CA filings, payroll, contracts, IRS deadlines. Runs Tuesdays.",
-    last: "Tuesday · All clear",
+    name: "Olivia", role: "Client Health", status: "idle",
+    desc: "Latest verified client health report from Notion.",
+    last: "Sep 25 · Partial",
+    notionUrl: "https://app.notion.com/3e6a4fa77eaf8181869ad5b78660ee5f",
     report: {
-      summary: "Tuesday compliance check complete. No outstanding filings, deadlines, or contract issues. Next run Tuesday June 16.",
-      items: [
-        { time: "Tuesday", label: "CA compliance check", note: "All filings current. No state notices.", tag: "DONE" },
-        { time: "Tuesday", label: "Contract review", note: "4 active contracts reviewed. Ryan Lands renewal due Jun 30 — flagged.", tag: "FLAG" },
-        { time: "Tuesday", label: "IRS deadlines", note: "Next estimated tax payment: Sep 15. No immediate action.", tag: "FYI" },
-      ],
+      summary: "The client health review was completed, but the report body write was blocked and the workflow checkpoint was not advanced.",
+      items: [{ time: "Sep 25", label: "Olivia · Client Health Review", note: "Latest verified Notion report. Status: Partial.", tag: "FLAG" }],
     },
   },
 ];
 
 const ACTIVITY_LOG = [
-  { time: "8:02 AM", color: "#60C070", text: <><strong>Peggy</strong> — Morning brief delivered to Slack · 4 meetings, 3 priority tasks, 1 opportunity flagged</> },
-  { time: "7:45 AM", color: "#E8C040", text: <><strong>Dave</strong> — Finance check complete · $5,000 LACES invoice pending 4 days, flagged to dashboard</> },
-  { time: "7:30 AM", color: "#60C070", text: <><strong>Nancy</strong> — Intelligence brief ready · 3 items surfaced, 1 opportunity flagged</> },
-  { time: "6:45 AM", color: "#60C070", text: <><strong>Mae</strong> — Morning audit complete · All systems nominal, no issues found</> },
+  { time: "Oct 16", color: "#60C070", text: <><strong>Peggy</strong> · Evening Closeout complete in Notion</> },
+  { time: "Oct 16", color: "#60C070", text: <><strong>Amber</strong> · Four communication runs complete</> },
+  { time: "Oct 15", color: "#60C070", text: <><strong>Nancy</strong> · Research intelligence report complete</> },
+  { time: "Oct 13", color: "#E8C040", text: <><strong>Milton</strong> · Meeting QA work remains blocked</> },
 ];
 
 const SUBSTACK_POSTS = [
@@ -622,17 +588,12 @@ type CommAction = "save_draft" | "ready_to_send" | "done" | "file" | "dismiss" |
 
 const COMMS_MOCK: CommItem[] = [
   {
-    id: "mock-1", notionUrl: "#", summary: "Kea replied asking about the brand deck timeline",
-    priority: "HIGH", source: "Gmail", client: "Luna Vita", status: "Needs Attention",
-    context: "Active deliverable in progress — client is waiting on your response",
-    draftReply: "Hey Kea! The brand deck is coming together beautifully. I'm targeting end of day Friday to send over the first full draft. Want to set up a quick 20-minute review call for next Monday? Let me know what works!",
-    action: "Reply", relativeTime: "2hr ago",
-  },
-  {
-    id: "mock-2", notionUrl: "#", summary: "Send updated Klaviyo flow proposal to Jeff by Thursday",
-    priority: "TASK", source: "Meeting Notes", client: "LACES", status: "Needs Attention",
-    context: "From LACES strategy call — Jeff expecting follow-up this week",
-    draftReply: "", action: "Approve", relativeTime: "yesterday",
+    id: "snapshot-scheduler-reliability",
+    notionUrl: "https://app.notion.com/p/3fba4fa77eaf81bea463e3b527a8aaa4?pvs=204",
+    summary: "The Oct 10 scheduler fix for Elle, Nancy, and Olivia did not hold, and Milton is separately blocked since Oct 6",
+    priority: "HIGH", source: "Notion", client: "Agent system", status: "Open",
+    context: "Latest verified Needs Attention item. Elle, Nancy, Olivia, and Milton have missing, stale, or blocked reporting runs.",
+    draftReply: "", action: "Review", relativeTime: "Latest Notion snapshot",
   },
 ];
 
@@ -645,8 +606,8 @@ function DailyReportCard({ fullPage = false, onOpenFullReport }: { fullPage?: bo
     <div className={`card daily-report-card${fullPage ? " daily-report-card-full" : ""}`}>
       <div className="card-header daily-report-card-header">
         <div>
-          <div className="card-label">Today's Overview</div>
-          <div className="card-subtitle" style={{ marginBottom: 0 }}>Peggy's daily report</div>
+          <div className="card-label">Latest Verified Report</div>
+          <div className="card-subtitle" style={{ marginBottom: 0 }}>Peggy · Evening Closeout · Oct 16</div>
         </div>
         <div className="daily-report-actions">
           {onOpenFullReport && (
@@ -662,14 +623,14 @@ function DailyReportCard({ fullPage = false, onOpenFullReport }: { fullPage?: bo
         <div className="daily-report-overview">
           <p>{peggy.report.summary}</p>
           <div className="daily-report-focus">
-            <span><strong>4</strong> meetings</span>
-            <span><strong>3</strong> priority tasks</span>
-            <span><strong>1</strong> opportunity</span>
-            <span><strong>3</strong> approvals</span>
+            <span><strong>Clear</strong> offer guardrails</span>
+            <span><strong>Open</strong> course production</span>
+            <span><strong>Risk</strong> runway facts</span>
+            <span><strong>Risk</strong> agent schedulers</span>
           </div>
           <div className="daily-report-callout">
-            <span>Most important today</span>
-            <strong>Luna Vita brand deck and Kea's waiting reply.</strong>
+            <span>Next useful unit</span>
+            <strong>Build Module 1. Do not expand the offer again before the course moves.</strong>
           </div>
         </div>
       ) : (
@@ -681,6 +642,7 @@ function DailyReportCard({ fullPage = false, onOpenFullReport }: { fullPage?: bo
                 <small>{agent.role}</small>
               </summary>
               <p>{agent.report.summary}</p>
+              {agent.notionUrl && <a href={agent.notionUrl} target="_blank" rel="noreferrer" className="card-link">Open verified report in Notion ↗</a>}
               <div className="daily-agent-items">
                 {agent.report.items.map((item, index) => (
                   <div key={`${agent.name}-${index}`}>
@@ -716,7 +678,7 @@ function HomeView() {
     if (typeof window === "undefined" || window.sessionStorage.getItem("peggy-report-seen")) return null;
     return AGENTS.find(agent => agent.name === "Peggy") ?? null;
   });
-  const [schedule, setSchedule] = useState<{ time: string; event: string }[]>(SCHEDULE_MOCK);
+  const [schedule, setSchedule] = useState<{ time: string; event: string }[]>(SCHEDULE_FALLBACK);
   const [scheduleLoading, setScheduleLoading] = useState(true);
   const [comms, setComms] = useState<CommItem[]>(COMMS_MOCK);
   const [commsLoading, setCommsLoading] = useState(true);
@@ -760,9 +722,11 @@ function HomeView() {
       const data = await apiFetch<{ events: { timeDisplay: string; title: string }[] }>("/gcal/events?days=1");
       if (data.events?.length) {
         setSchedule(data.events.map(e => ({ time: e.timeDisplay, event: e.title })));
+      } else {
+        setSchedule([]);
       }
     } catch {
-      // keep mock
+      setSchedule([]);
     } finally {
       setScheduleLoading(false);
     }
@@ -786,7 +750,7 @@ function HomeView() {
 
   async function dismissComm(id: string) {
     setDismissed(prev => new Set([...prev, id]));
-    if (!id.startsWith("mock-")) {
+    if (!id.startsWith("snapshot-")) {
       try { await apiFetch(`/notion/comms/${id}/dismiss`, { method: "POST" }); } catch { /* best-effort */ }
     }
   }
@@ -807,8 +771,8 @@ function HomeView() {
     setActingOnComm(prev => new Set([...prev, item.id]));
     setCommActionStatus(prev => ({ ...prev, [item.id]: "Saving to Notion..." }));
 
-    if (item.id.startsWith("mock-")) {
-      setCommActionStatus(prev => ({ ...prev, [item.id]: "Demo item only — not saved to Notion." }));
+    if (item.id.startsWith("snapshot-")) {
+      setCommActionStatus(prev => ({ ...prev, [item.id]: "This is a verified Notion snapshot. Open the source report to update it." }));
       if (resolvesItem) setDismissed(prev => new Set([...prev, item.id]));
       setActingOnComm(prev => {
         const next = new Set(prev);
@@ -865,8 +829,13 @@ function HomeView() {
               <RefreshBtn onClick={loadSchedule} />
             </div>
             <div className="home-grid-scroll">
-              {scheduleLoading && schedule === SCHEDULE_MOCK && (
+              {scheduleLoading && (
                 <div style={{ fontSize: 12, color: "var(--text-xsoft)", padding: "4px 0 8px" }}>Loading from Google Calendar…</div>
+              )}
+              {!scheduleLoading && schedule.length === 0 && (
+                <div style={{ fontSize: 12, color: "var(--text-xsoft)", padding: "12px 0", lineHeight: 1.55 }}>
+                  No live calendar events are available. Nothing made up is shown here.
+                </div>
               )}
               {schedule.map((s, i) => (
                 <div className="schedule-item" key={i}>
@@ -1217,9 +1186,9 @@ function PeggyDailyReportModal({ onClose }: { onClose: () => void }) {
       <div className="aqv-panel peggy-report-modal" onClick={event => event.stopPropagation()}>
         <div className="aqv-header peggy-report-header">
           <div>
-            <div className="peggy-report-eyebrow">Peggy's Daily Report · 8:02 AM</div>
-            <div className="aqv-name">Good evening, Gabby.</div>
-            <div className="aqv-role">Sunday, October 18, 2026</div>
+            <div className="peggy-report-eyebrow">Latest verified Notion report</div>
+            <div className="aqv-name">Peggy · Evening Closeout</div>
+            <div className="aqv-role">Friday, October 16, 2026 · Complete</div>
           </div>
           <button className="aqv-close" onClick={onClose} aria-label="Minimize Peggy's report">✕</button>
         </div>
@@ -1231,19 +1200,35 @@ function PeggyDailyReportModal({ onClose }: { onClose: () => void }) {
           </section>
 
           <section className="peggy-report-section">
-            <div className="aqv-section-label">What Needs You First</div>
+            <div className="aqv-section-label">Today in Review</div>
             <div className="peggy-priority-list">
-              <div><span>1</span><p><strong>Finish the Luna Vita brand deck.</strong>Kea is waiting for a timeline. The draft reply is ready in Needs Attention.</p></div>
-              <div><span>2</span><p><strong>Approve the LACES Klaviyo proposal.</strong>Jeff is expecting the updated flow proposal this week.</p></div>
-              <div><span>3</span><p><strong>Review Nancy's partnership lead.</strong>Mila &amp; Co has a warm introduction available for a Q3 creative partnership.</p></div>
+              <div><span>1</span><p><strong>Offer guardrails got clearer.</strong>From Scratch stays $27.99. Custom AI builds begin at $5,000, with $5,000 or $10,000 retainers. The $350 strategy session and $1,250 roadmap remain proposals, not launched offers.</p></div>
+              <div><span>2</span><p><strong>The course direction is set.</strong>Build Your AI OS remains evergreen and self-paced, with a $252 course plus a $45 Vault for a $297 product ladder.</p></div>
+              <div><span>3</span><p><strong>Creative and care work moved.</strong>The From Scratch social post was shared, the family essay stayed in revision, and the Gabby Learnings timeline was updated through October 15.</p></div>
             </div>
           </section>
 
           <section className="peggy-report-section">
-            <div className="aqv-section-label">Today's Calendar</div>
-            <div className="peggy-schedule">
-              {SCHEDULE_MOCK.map(item => <div key={`${item.time}-${item.event}`}><span>{item.time}</span><strong>{item.event}</strong></div>)}
+            <div className="aqv-section-label">Still Open</div>
+            <div className="peggy-priority-list">
+              <div><span>1</span><p><strong>Build Your AI Operating System is overdue.</strong>The next useful unit is Module 1.</p></div>
+              <div><span>2</span><p><strong>Offer research is unfinished.</strong>Episode 4 may also have a status mismatch between publishing and the task record.</p></div>
+              <div><span>3</span><p><strong>The writing backlog remains open.</strong>The family essay, LinkedIn launch post, research-content system, and several Substack ideas still need a next step.</p></div>
             </div>
+          </section>
+
+          <section className="peggy-report-section">
+            <div className="aqv-section-label">Needs Your Attention</div>
+            <div className="peggy-priority-list">
+              <div><span>1</span><p><strong>Financial runway.</strong>This remains the highest personal-business risk. Peggy recommended a capped 30-minute facts block.</p></div>
+              <div><span>2</span><p><strong>Agent scheduler reliability.</strong>Several agent reporting schedules are missing, stale, or blocked.</p></div>
+              <div><span>3</span><p><strong>Loose ends.</strong>Shahira's volunteer reply, Google agentic OAuth and Tasks grounding decisions, and Canva/Substack email changes still need confirmation.</p></div>
+            </div>
+          </section>
+
+          <section className="peggy-report-section">
+            <div className="aqv-section-label">Waiting On</div>
+            <p>Kea is reviewing the website proposal. The Midnight agent work is blocked on source inputs. From Scratch print production is waiting on publisher review.</p>
           </section>
 
           <section className="peggy-report-section">
@@ -1253,6 +1238,7 @@ function PeggyDailyReportModal({ onClose }: { onClose: () => void }) {
                 <details key={agent.name}>
                   <summary><span>{agent.name}</span><small>{agent.role}</small></summary>
                   <p>{agent.report.summary}</p>
+                  {agent.notionUrl && <a href={agent.notionUrl} target="_blank" rel="noreferrer" className="card-link">Open in Notion ↗</a>}
                   {agent.report.items.map((item, index) => (
                     <div className="peggy-handoff-item" key={`${agent.name}-${index}`}>
                       <strong>{item.label}</strong><span>{item.note}</span>
@@ -1264,13 +1250,14 @@ function PeggyDailyReportModal({ onClose }: { onClose: () => void }) {
           </section>
 
           <section className="peggy-report-section peggy-report-bottom-line">
-            <div className="aqv-section-label">Peggy's Bottom Line</div>
-            <p>Protect the first focused work block for Luna Vita. Clear the two approvals before the afternoon meetings. Everything else can wait.</p>
+            <div className="aqv-section-label">The Close</div>
+            <p>Strategic clarification, creative progress, and family care all moved. Let the next day be human-sized.</p>
+            <a href="https://app.notion.com/p/3fca4fa77eaf8136ac36c76815764420?pvs=204" target="_blank" rel="noreferrer" className="card-link">Open Peggy's full source report in Notion ↗</a>
           </section>
         </div>
 
         <div className="aqv-footer peggy-report-footer">
-          <span className="aqv-footer-hint">Close to minimize this report into Today's Overview.</span>
+          <span className="aqv-footer-hint">Close to minimize this verified report into the overview.</span>
           <button type="button" className="peggy-minimize" onClick={onClose}>Minimize report</button>
         </div>
       </div>
