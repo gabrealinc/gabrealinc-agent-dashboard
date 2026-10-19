@@ -37,7 +37,7 @@ function addDays(d: Date, n: number) { const r = new Date(d); r.setDate(r.getDat
 function weekStart(d: Date) { const r = new Date(d); const day = r.getDay(); r.setDate(r.getDate() - day + (day === 0 ? -6 : 1)); return r; }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type View = "home" | "clients" | "finance" | "intelligence" | "substack" | "spirit" | "agents";
+type View = "home" | "daily" | "clients" | "finance" | "intelligence" | "substack" | "spirit" | "agents";
 
 type HealthStatus = "green" | "yellow" | "red" | "gray";
 interface AgentHealth {
@@ -270,7 +270,7 @@ const AGENTS: Agent[] = [
     },
   },
   {
-    name: "Sage", role: "Executive Partner", status: "active",
+    name: "Peggy", role: "Executive Partner", status: "active",
     desc: "Morning standup, daily priorities, opportunity scan. Reads all other agent reports and delivers your 8am brief to Slack.",
     last: "8:02 AM · Brief delivered to Slack",
     report: {
@@ -311,7 +311,7 @@ const AGENTS: Agent[] = [
 ];
 
 const ACTIVITY_LOG = [
-  { time: "8:02 AM", color: "#60C070", text: <><strong>Sage</strong> — Morning brief delivered to Slack · 4 meetings, 3 priority tasks, 1 opportunity flagged</> },
+  { time: "8:02 AM", color: "#60C070", text: <><strong>Peggy</strong> — Morning brief delivered to Slack · 4 meetings, 3 priority tasks, 1 opportunity flagged</> },
   { time: "7:45 AM", color: "#E8C040", text: <><strong>Dave</strong> — Finance check complete · $5,000 LACES invoice pending 4 days, flagged to dashboard</> },
   { time: "7:30 AM", color: "#60C070", text: <><strong>Nancy</strong> — Intelligence brief ready · 3 items surfaced, 1 opportunity flagged</> },
   { time: "6:45 AM", color: "#60C070", text: <><strong>Mae</strong> — Morning audit complete · All systems nominal, no issues found</> },
@@ -617,10 +617,80 @@ const COMMS_MOCK: CommItem[] = [
 ];
 
 // ─── View: HOME ───────────────────────────────────────────────────────────────
+function DailyReportCard({ fullPage = false }: { fullPage?: boolean }) {
+  const [showReports, setShowReports] = useState(false);
+  const peggy = AGENTS.find(agent => agent.name === "Peggy") ?? AGENTS[0];
+
+  return (
+    <div className={`card daily-report-card${fullPage ? " daily-report-card-full" : ""}`}>
+      <div className="card-header daily-report-card-header">
+        <div>
+          <div className="card-label">Today's Overview</div>
+          <div className="card-subtitle" style={{ marginBottom: 0 }}>Peggy's daily report</div>
+        </div>
+        <button className="daily-report-flip" type="button" onClick={() => setShowReports(value => !value)}>
+          {showReports ? "Overview" : "Agent reports"} ↻
+        </button>
+      </div>
+
+      {!showReports ? (
+        <div className="daily-report-overview">
+          <p>{peggy.report.summary}</p>
+          <div className="daily-report-focus">
+            <span><strong>4</strong> meetings</span>
+            <span><strong>3</strong> priority tasks</span>
+            <span><strong>1</strong> opportunity</span>
+            <span><strong>3</strong> approvals</span>
+          </div>
+          <div className="daily-report-callout">
+            <span>Most important today</span>
+            <strong>Luna Vita brand deck and Kea's waiting reply.</strong>
+          </div>
+        </div>
+      ) : (
+        <div className="daily-agent-reports">
+          {AGENTS.map(agent => (
+            <details className="daily-agent-report" key={agent.name}>
+              <summary>
+                <span><i className={`agent-dot dot-${agent.status}`} />{agent.name}</span>
+                <small>{agent.role}</small>
+              </summary>
+              <p>{agent.report.summary}</p>
+              <div className="daily-agent-items">
+                {agent.report.items.map((item, index) => (
+                  <div key={`${agent.name}-${index}`}>
+                    <strong>{item.label}</strong>
+                    <span>{item.note}</span>
+                  </div>
+                ))}
+              </div>
+            </details>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DailyReportView() {
+  return (
+    <div>
+      <div className="page-header">
+        <h1 className="page-greeting">Daily Report</h1>
+        <p className="page-subtitle">Your day at a glance, followed by every agent's report.</p>
+      </div>
+      <DailyReportCard fullPage />
+    </div>
+  );
+}
+
 function HomeView() {
   const [calOpen, setCalOpen] = useState(false);
   const closeCalendar = useCallback(() => setCalOpen(false), []);
-  const [agentQuickView, setAgentQuickView] = useState<Agent | null>(null);
+  const [agentQuickView, setAgentQuickView] = useState<Agent | null>(() => {
+    if (typeof window === "undefined" || window.sessionStorage.getItem("peggy-report-seen")) return null;
+    return AGENTS.find(agent => agent.name === "Peggy") ?? null;
+  });
   const [schedule, setSchedule] = useState<{ time: string; event: string }[]>(SCHEDULE_MOCK);
   const [scheduleLoading, setScheduleLoading] = useState(true);
   const [comms, setComms] = useState<CommItem[]>(COMMS_MOCK);
@@ -757,8 +827,10 @@ function HomeView() {
         <h1 className="page-greeting">{getGreeting()}, Gabby.</h1>
       </div>
 
-      <div className="home-grid" style={{ alignItems: "stretch" }}>
-        {/* LEFT — Schedule */}
+      <div className="home-grid home-grid-three" style={{ alignItems: "stretch" }}>
+        <DailyReportCard />
+
+        {/* Calendar */}
         <div>
           <div className="card">
             <div className="card-header">
@@ -788,7 +860,7 @@ function HomeView() {
           </div>
         </div>
 
-        {/* RIGHT — Priorities */}
+        {/* Priorities */}
         <div>
           <div className="card">
             <div className="card-header">
@@ -947,6 +1019,7 @@ function HomeView() {
         );
       })()}
 
+      {false && <>
       {/* ── Quick Stats ── Tasks + Invoices ───────────────────── */}
       {(() => {
         const today = new Date();
@@ -1082,9 +1155,13 @@ function HomeView() {
           </button>
         </div>
       </div>
+      </>}
 
       {calOpen && <CalendarModal onClose={closeCalendar} />}
-      {agentQuickView && <AgentQuickView agent={agentQuickView} onClose={() => setAgentQuickView(null)} />}
+      {agentQuickView && <AgentQuickView agent={agentQuickView} onClose={() => {
+        if (agentQuickView.name === "Peggy") window.sessionStorage.setItem("peggy-report-seen", "true");
+        setAgentQuickView(null);
+      }} />}
     </div>
   );
 }
@@ -2214,6 +2291,7 @@ function AgentsView({ healthData, healthCheckedAt, healthLoading, healthError, o
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 const VIEWS: { id: View; label: string }[] = [
   { id: "home", label: "Home" },
+  { id: "daily", label: "Daily Report" },
   { id: "clients", label: "Clients" },
   { id: "finance", label: "Finance" },
   { id: "intelligence", label: "Intelligence" },
@@ -2307,6 +2385,7 @@ export default function Dashboard() {
 
       <main className="main">
         {view === "home"         && <HomeView />}
+        {view === "daily"        && <DailyReportView />}
         {view === "clients"      && <ClientsView />}
         {view === "finance"      && <FinanceView />}
         {view === "intelligence" && <IntelligenceView />}
