@@ -581,81 +581,6 @@ function PrioritiesPanel({ tasks = [], setTasks, loading }: {
   );
 }
 
-// ─── Sage Chat Widget (floating, available on all tabs) ───────────────────────
-function SageChatWidget() {
-  const [open, setOpen] = useState(false);
-  const [chatMessages, setChatMessages] = useState<{ role: "sage" | "user"; text: string }[]>([
-    { role: "sage", text: "Good morning! You have 4 meetings today and 3 items in your queue. Your highest priority is the Luna Vita reply — Kea has been waiting since this morning." },
-  ]);
-  const [chatInput, setChatInput] = useState("");
-  const [sending, setSending] = useState(false);
-  const messagesRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (messagesRef.current) messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
-  }, [chatMessages, open]);
-
-  function sendChat() {
-    const msg = chatInput.trim();
-    if (!msg || sending) return;
-    setChatMessages(prev => [...prev, { role: "user", text: msg }]);
-    setChatInput("");
-    setSending(true);
-    setTimeout(() => {
-      setChatMessages(prev => [...prev, { role: "sage", text: "I'm pulling that together for you now. Give me one moment..." }]);
-      setSending(false);
-    }, 900);
-  }
-
-  return (
-    <>
-      {/* Floating button in nav */}
-      <button
-        className={`sage-fab ${open ? "sage-fab-open" : ""}`}
-        onClick={() => setOpen(o => !o)}
-        title="Sage — your executive partner"
-      >
-        <span className="sage-fab-icon">✦</span>
-        <span className="sage-fab-label">Sage</span>
-      </button>
-
-      {/* Floating chat panel */}
-      {open && (
-        <div className="sage-panel">
-          <div className="sage-panel-header">
-            <div>
-              <div style={{ fontFamily: "'Playfair Display', serif", fontWeight: 500, fontSize: 16 }}>Sage</div>
-              <div style={{ fontSize: 11, color: "var(--text-xsoft)", marginTop: 1 }}>Your executive partner · ready to help</div>
-            </div>
-            <button className="cal-icon-btn" onClick={() => setOpen(false)}>✕</button>
-          </div>
-          <div className="chat-messages sage-panel-messages" ref={messagesRef}>
-            {chatMessages.map((m, i) => (
-              <div key={i} className={`chat-msg ${m.role}`}>{m.text}</div>
-            ))}
-            {sending && <div className="chat-msg sage" style={{ opacity: 0.6 }}>...</div>}
-          </div>
-          <div className="sage-panel-footer">
-            <div className="chat-input-row">
-              <input
-                className="chat-input"
-                type="text"
-                placeholder="Ask Sage anything..."
-                value={chatInput}
-                onChange={e => setChatInput(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") sendChat(); }}
-                autoFocus
-              />
-              <button className="btn-send-chat" onClick={sendChat}>Send</button>
-            </div>
-            <div className="powered-by" style={{ marginTop: 6 }}>Powered by Claude via Supabase</div>
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
-
 // ─── Types: Comms ─────────────────────────────────────────────────────────────
 type CommItem = {
   id: string;
@@ -1929,7 +1854,7 @@ function WritingCornerView() {
       {writingTime && selected && (
         <div className="writing-time-overlay" role="dialog" aria-modal="true" aria-label="Writing Corner">
           <header className="writing-time-header">
-            <div className="writing-time-brand"><span>w.</span> writing corner.</div>
+            <div className="writing-time-brand">Writing Corner</div>
             <div className="writing-time-header-actions">
               <span>{saving ? "Saving..." : saveMsg || "Saved to Notion"}</span>
               <button className="writing-time-leave" onClick={() => { void leaveWritingMode(); }}>Exit writing mode</button>
@@ -2331,7 +2256,6 @@ export default function Dashboard() {
         <div className="nav-top">
           <div className="nav-brand">Gab Real Inc</div>
           <div className="nav-top-right">
-            <SageChatWidget />
             <div className="nav-date">{formatDate()}</div>
           </div>
         </div>
