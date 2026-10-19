@@ -37,7 +37,7 @@ function addDays(d: Date, n: number) { const r = new Date(d); r.setDate(r.getDat
 function weekStart(d: Date) { const r = new Date(d); const day = r.getDay(); r.setDate(r.getDate() - day + (day === 0 ? -6 : 1)); return r; }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type View = "home" | "clients" | "finance" | "intelligence" | "substack" | "spirit" | "agents";
+type View = "home" | "clients" | "finance" | "substack" | "agents";
 
 type HealthStatus = "green" | "yellow" | "red" | "gray";
 interface AgentHealth {
@@ -153,37 +153,33 @@ const INTEL_ITEMS = [
   },
 ];
 
-const CLIENTS = [
-  {
-    name: "Luna Vita", contact: "Kea Moran", email: "kea@lunavita.com", phone: "(310) 555-0182",
-    type: "Brand Identity + Social", status: "Active", tags: ["Brand", "Social", "Strategy"],
-    value: 4800, valueLabel: "monthly", nextMeeting: "Jun 12 · 2:00 PM",
-    lastActivity: "Sent brand deck v2 · Jun 8", deliverables: 3, notionUrl: "https://notion.so",
-  },
-  {
-    name: "LACES", contact: "Jeff Williams", email: "jeff@lacesatl.com", phone: "(404) 555-0247",
-    type: "Email Marketing Strategy", status: "Needs Attention", tags: ["Email", "Klaviyo", "Campaigns"],
-    value: 5000, valueLabel: "monthly", nextMeeting: "Jun 10 · 10:00 AM",
-    lastActivity: "Klaviyo flow proposal sent · Jun 7", deliverables: 2, notionUrl: "https://notion.so",
-  },
-  {
-    name: "Luxx", contact: "Marcus Reid", email: "marcus@luxxco.com", phone: "(323) 555-0391",
-    type: "Website + Branding", status: "Active", tags: ["Web", "Brand"],
-    value: 12000, valueLabel: "project", nextMeeting: "Jun 14 · 3:30 PM",
-    lastActivity: "Homepage wireframes approved · Jun 5", deliverables: 4, notionUrl: "https://notion.so",
-  },
-  {
-    name: "Issa Rae Media", contact: "Issa Rae", email: "team@issaraemedia.com", phone: "(213) 555-0118",
-    type: "Campaign Design", status: "Active", tags: ["Design", "Campaign"],
-    value: 2400, valueLabel: "monthly", nextMeeting: "Jun 18 · 1:00 PM",
-    lastActivity: "Campaign assets delivered · May 28", deliverables: 1, notionUrl: "https://notion.so",
-  },
-  {
-    name: "Bluebell", contact: "Sophie Okafor", email: "sophie@bluebellbrand.com", phone: "(415) 555-0276",
-    type: "Social Content", status: "Paused", tags: ["Social", "Content"],
-    value: 1800, valueLabel: "monthly", nextMeeting: "—",
-    lastActivity: "Contract paused · May 15", deliverables: 0, notionUrl: "https://notion.so",
-  },
+type ClientRecord = {
+  name: string;
+  status: string;
+  priority: string;
+  monthly: number;
+  totalValue: number | null;
+  currentEngagement: string;
+  currentPriorities: string;
+  waitingOn: string;
+  commsPreference: string;
+  website: string;
+  lastUpdated: string;
+  notionUrl: string;
+};
+
+const CLIENTS_NOTION_URL = "https://app.notion.com/p/222a4fa77eaf81478e38c6be0003d2e9";
+
+const CLIENTS: ClientRecord[] = [
+  { name: "Golden Era Sciences", status: "Active", priority: "Medium", monthly: 5000, totalValue: 100000, currentEngagement: "Gabby continues to manage the Golden Era Sciences website. Revenue-share terms may be revisited, but no percentage or structure is finalized.", currentPriorities: "Label production and delivery are complete. Website, favicon, and pixel work remain complete unless a new request arises.", waitingOn: "Dan owns payment-processor setup and testing.", commsPreference: "Text", website: "", lastUpdated: "Oct 9", notionUrl: "https://app.notion.com/304a4fa77eaf8076aa07c017a6ec5ddb" },
+  { name: "Midnight Consulting Group", status: "Active", priority: "High", monthly: 1125, totalValue: null, currentEngagement: "$1,125 prepaid six-call AI strategy and advisory package, shared across Betsy, her team, and Chris. Four credits remain recorded.", currentPriorities: "Use the Meeting Credits document as the source of truth. Keep role-specific agent work input-gated and leave Outlook draft recipient fields blank.", waitingOn: "Gabby's interpretation of how Betsy's October 13 request should affect the remaining credit balance.", commsPreference: "Video Call", website: "https://midnightconsultinggroup.com/", lastUpdated: "Oct 15", notionUrl: "https://app.notion.com/397a4fa77eaf81ceaff2cfc59d6bd525" },
+  { name: "Specialty Roll Products", status: "Proposal Sent", priority: "High", monthly: 0, totalValue: null, currentEngagement: "Proposal sent to the Specialty Roll Products leadership team.", currentPriorities: "No current action for Gabby.", waitingOn: "Leadership review and response.", commsPreference: "", website: "", lastUpdated: "Sep 29", notionUrl: "https://app.notion.com/3c2a4fa77eaf806f8d39e44af0de1058" },
+  { name: "Luxx Wellness & Beauty", status: "Passive", priority: "Low", monthly: 200, totalValue: null, currentEngagement: "Passive recurring AI custom-product and GHL relationship at $200 per month. No active project is underway.", currentPriorities: "Maintain the existing portal and GHL relationship. New work requires a separately approved scope.", waitingOn: "Nothing. New project work begins only after a new request and approved scope.", commsPreference: "Text", website: "", lastUpdated: "Oct 3", notionUrl: "https://app.notion.com/225a4fa77eaf80548294e40747a47eac" },
+  { name: "Aftermath Collective", status: "GHL", priority: "Low", monthly: 197, totalValue: 5000, currentEngagement: "Client delivery is complete. The site and GHL workflow project are finished and the $5,000 invoice has been sent.", currentPriorities: "No delivery work is pending. Monitor payment only.", waitingOn: "Payment of the sent $5,000 invoice.", commsPreference: "Text", website: "", lastUpdated: "Oct 3", notionUrl: "https://app.notion.com/284a4fa77eaf80368068f88e6710eef9" },
+  { name: "Elevate With Kait", status: "GHL", priority: "Low", monthly: 50, totalValue: null, currentEngagement: "Passive monthly GoHighLevel client. No active project is underway.", currentPriorities: "Normal passive GHL maintenance. The nervous-system guide is exploratory only until scope, ownership, and economics are agreed.", waitingOn: "A decision on whether the guide becomes a scoped project.", commsPreference: "Text", website: "", lastUpdated: "Oct 15", notionUrl: "https://app.notion.com/30ca4fa77eaf8021a1f1dd9b04e36438" },
+  { name: "Inspirit Alchemy", status: "GHL", priority: "Low", monthly: 75, totalValue: null, currentEngagement: "Passive monthly GoHighLevel client. The hosting, support, and referral agreement has been sent.", currentPriorities: "Normal passive GHL account maintenance only.", waitingOn: "Grace to sign the agreement after travel. No follow-up is required unless she raises a question.", commsPreference: "Text", website: "", lastUpdated: "Sep 29", notionUrl: "https://app.notion.com/30ca4fa77eaf8098ae91e1d463ee7722" },
+  { name: "Kea Kiehl", status: "GHL", priority: "Low", monthly: 197, totalValue: 3725, currentEngagement: "$197 per month GHL support continues. A $3,500 My Spirit Oasis and Luna Vita website proposal was sent October 7 and is not yet accepted.", currentPriorities: "Await the website proposal decision and payment preference. Google Workspace migration and SMS notification troubleshooting remain documented.", waitingOn: "Kea's proposal decision, migration follow-up, and SMS troubleshooting results.", commsPreference: "Email", website: "", lastUpdated: "Oct 12", notionUrl: "https://app.notion.com/375a4fa77eaf81b8abefc8221e98b147" },
+  { name: "Let's Go Travel with Mary", status: "GHL", priority: "Low", monthly: 0, totalValue: null, currentEngagement: "No current engagement details are recorded in Notion.", currentPriorities: "No current priorities are recorded in Notion.", waitingOn: "Nothing recorded.", commsPreference: "Phone Call", website: "", lastUpdated: "Sep 25", notionUrl: "https://app.notion.com/30ca4fa77eaf800bbbc2d6c14296247e" },
 ];
 
 type AgentActivity = { time: string; label: string; note: string; tag: "URGENT" | "ACTION" | "FYI" | "DONE" | "FLAG" };
@@ -1447,26 +1443,23 @@ function NewClientModal({ onClose }: { onClose: () => void }) {
 
 // ─── View: CLIENTS ────────────────────────────────────────────────────────────
 function ClientsView() {
-  const [filter, setFilter] = useState<"all" | "Active" | "Needs Attention" | "Paused">("all");
-  const [showNewClient, setShowNewClient] = useState(false);
+  const [filter, setFilter] = useState<"all" | "Active" | "Proposal Sent" | "Passive" | "GHL">("all");
   const [clients, setClients] = useState(CLIENTS);
   const [clientsLoading, setClientsLoading] = useState(true);
   const [clientsFromNotion, setClientsFromNotion] = useState(false);
-  const [notionDbUrl, setNotionDbUrl] = useState<string>("");
+  const [notionDbUrl, setNotionDbUrl] = useState<string>(CLIENTS_NOTION_URL);
   const dbId = import.meta.env.VITE_NOTION_CLIENTS_DB_ID;
 
   async function loadClients() {
     setClientsLoading(true);
     try {
       const url = dbId ? `/notion/clients?db=${encodeURIComponent(dbId)}` : "/notion/clients";
-      const data = await apiFetch<{ clients: typeof CLIENTS; notionDbUrl?: string }>(url);
-      // Always replace with Notion data — coerce values to numbers
-      const normalised = (data.clients ?? []).map(c => ({ ...c, value: Number(c.value) || 0 }));
-      setClients(normalised);
+      const data = await apiFetch<{ clients: ClientRecord[]; notionDbUrl?: string }>(url);
+      setClients(data.clients ?? []);
       setClientsFromNotion(true);
       if (data.notionDbUrl) setNotionDbUrl(data.notionDbUrl);
     } catch {
-      // keep mock on error
+      // Keep the latest verified Notion snapshot visible.
     } finally {
       setClientsLoading(false);
     }
@@ -1476,9 +1469,9 @@ function ClientsView() {
 
   const filtered = filter === "all" ? clients : clients.filter(c => c.status === filter);
   const activeClients = clients.filter(c => c.status === "Active");
-  const monthlyRetainer = activeClients.filter(c => c.valueLabel === "monthly").reduce((s, c) => s + Number(c.value), 0);
-  const totalDeliverables = clients.reduce((s, c) => s + (c.deliverables ?? 0), 0);
-  const nextMtg = clients.find(c => c.nextMeeting !== "—");
+  const monthlyRevenue = clients.reduce((sum, client) => sum + client.monthly, 0);
+  const waitingCount = clients.filter(client => client.waitingOn && !client.waitingOn.toLowerCase().startsWith("nothing")).length;
+  const proposalCount = clients.filter(client => client.status === "Proposal Sent").length;
 
   const AVATAR_COLORS = ["#E8A040", "#9060C0", "#60A878", "#C06060", "#4080C0"];
 
@@ -1492,7 +1485,7 @@ function ClientsView() {
               ? "Syncing from Notion…"
               : clientsFromNotion
                 ? `${clients.length} client${clients.length !== 1 ? "s" : ""} · synced from Notion`
-                : "Your active roster · synced from Notion"}
+                : `${clients.length} verified client records · latest Notion snapshot`}
             {notionDbUrl && !clientsLoading && (
               <a href={notionDbUrl} target="_blank" rel="noopener noreferrer"
                 style={{ fontSize: 12, color: "var(--accent)", textDecoration: "none", fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 3 }}>
@@ -1514,32 +1507,32 @@ function ClientsView() {
           <div className="stat-sub">{clients.length} total</div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">Monthly Retainer</div>
-          <div className="stat-value">${monthlyRetainer.toLocaleString()}</div>
-          <div className="stat-sub">Recurring revenue</div>
+          <div className="stat-label">Monthly Recorded</div>
+          <div className="stat-value">${monthlyRevenue.toLocaleString()}</div>
+          <div className="stat-sub">Across these Notion records</div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">Active Deliverables</div>
-          <div className="stat-value">{totalDeliverables}</div>
-          <div className="stat-sub">Across all clients</div>
+          <div className="stat-label">Waiting On</div>
+          <div className="stat-value">{waitingCount}</div>
+          <div className="stat-sub">Records with an open dependency</div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">Next Meeting</div>
-          <div className="stat-value" style={{ fontSize: 16, lineHeight: 1.2 }}>{nextMtg?.name ?? "—"}</div>
-          <div className="stat-sub">{nextMtg?.nextMeeting ?? ""}</div>
+          <div className="stat-label">Proposals Out</div>
+          <div className="stat-value">{proposalCount}</div>
+          <div className="stat-sub">Awaiting a decision</div>
         </div>
       </div>
 
       {/* Toolbar */}
       <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
         <div className="filter-pills">
-          {(["all", "Active", "Needs Attention", "Paused"] as const).map(f => (
+          {(["all", "Active", "Proposal Sent", "Passive", "GHL"] as const).map(f => (
             <button key={f} className={`pill ${filter === f ? "active" : ""}`} onClick={() => setFilter(f)}>
               {f === "all" ? `All (${clients.length})` : `${f} (${clients.filter(c => c.status === f).length})`}
             </button>
           ))}
         </div>
-        <button className="btn btn-accent" onClick={() => setShowNewClient(true)}>+ New Client</button>
+        <a className="btn btn-accent" href={CLIENTS_NOTION_URL} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>Open Clients in Notion ↗</a>
       </div>
 
       {/* Client cards */}
@@ -1563,54 +1556,48 @@ function ClientsView() {
               <div className="ccv2-avatar" style={{ background: color }}>{initials}</div>
               <div className="ccv2-info">
                 <div className="ccv2-name">{c.name}</div>
-                <div className="ccv2-contact">
-                  {c.contact} · <a href={`mailto:${c.email}`} className="ccv2-link">{c.email}</a>
-                  {c.phone && <span style={{ color: "var(--text-xsoft)" }}> · {c.phone}</span>}
-                </div>
+                <div className="ccv2-contact">Priority: {c.priority || "Not set"} · Updated {c.lastUpdated}</div>
               </div>
               <div className="ccv2-header-right">
                 <span className={`client-status-badge ${badgeClass}`}>{c.status}</span>
                 <div className="ccv2-value">
-                  ${c.value.toLocaleString()}
-                  <span className="ccv2-value-label">/{c.valueLabel === "monthly" ? "mo" : "project"}</span>
+                  ${c.monthly.toLocaleString()}
+                  <span className="ccv2-value-label">/mo recorded</span>
                 </div>
               </div>
             </div>
 
             <div className="ccv2-details">
               <div className="ccv2-detail-item">
-                <span className="ccv2-detail-label">Services</span>
-                <span className="ccv2-detail-val">{c.type}</span>
+                <span className="ccv2-detail-label">Current Engagement</span>
+                <span className="ccv2-detail-val">{c.currentEngagement || "Not recorded in Notion."}</span>
               </div>
               <div className="ccv2-detail-item">
-                <span className="ccv2-detail-label">Next Meeting</span>
-                <span className="ccv2-detail-val">{c.nextMeeting}</span>
+                <span className="ccv2-detail-label">Current Priorities</span>
+                <span className="ccv2-detail-val">{c.currentPriorities || "Not recorded in Notion."}</span>
               </div>
               <div className="ccv2-detail-item">
-                <span className="ccv2-detail-label">Last Activity</span>
-                <span className="ccv2-detail-val">{c.lastActivity}</span>
+                <span className="ccv2-detail-label">Waiting On</span>
+                <span className="ccv2-detail-val">{c.waitingOn || "Nothing recorded."}</span>
               </div>
               <div className="ccv2-detail-item">
-                <span className="ccv2-detail-label">Deliverables</span>
-                <span className="ccv2-detail-val">{c.deliverables} active</span>
+                <span className="ccv2-detail-label">Communication</span>
+                <span className="ccv2-detail-val">{c.commsPreference || "Not recorded"}</span>
               </div>
             </div>
 
             <div className="ccv2-footer">
               <div className="client-tags">
-                {c.tags.map((t: string, j: number) => <span className="client-tag" key={j}>{t}</span>)}
+                {c.totalValue != null && <span className="client-tag">Total value: ${c.totalValue.toLocaleString()}</span>}
+                {c.website && <a className="client-tag" href={c.website} target="_blank" rel="noreferrer">Website ↗</a>}
               </div>
               <div className="ccv2-actions">
                 <button className="ccv2-action-btn" onClick={() => window.open(c.notionUrl, "_blank")}>Open in Notion ↗</button>
-                <button className="ccv2-action-btn" onClick={() => { window.location.href = `mailto:${c.email}`; }}>Email</button>
-                <button className="ccv2-action-btn" onClick={() => alert(`Invoice history for ${c.name}`)}>Invoices</button>
               </div>
             </div>
           </div>
         );
       })}
-
-      {showNewClient && <NewClientModal onClose={() => setShowNewClient(false)} />}
     </div>
   );
 }
@@ -2376,9 +2363,7 @@ const VIEWS: { id: View; label: string }[] = [
   { id: "home", label: "Home" },
   { id: "clients", label: "Clients" },
   { id: "finance", label: "Finance" },
-  { id: "intelligence", label: "Intelligence" },
   { id: "substack", label: "Writing" },
-  { id: "spirit", label: "Spirit" },
   { id: "agents", label: "Agents" },
 ];
 
@@ -2469,9 +2454,7 @@ export default function Dashboard() {
         {view === "home"         && <HomeView />}
         {view === "clients"      && <ClientsView />}
         {view === "finance"      && <FinanceView />}
-        {view === "intelligence" && <IntelligenceView />}
         {view === "substack"     && <WritingCornerView />}
-        {view === "spirit"       && <SpiritView />}
         {view === "agents"       && (
           <AgentsView
             healthData={healthData}
