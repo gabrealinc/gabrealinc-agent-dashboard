@@ -623,14 +623,8 @@ function DailyReportCard({ fullPage = false, onOpenFullReport }: { fullPage?: bo
       {!showReports ? (
         <div className="daily-report-overview">
           <p>{peggy.report.summary}</p>
-          <div className="daily-report-focus">
-            <span><strong>Clear</strong> offer guardrails</span>
-            <span><strong>Open</strong> course production</span>
-            <span><strong>Risk</strong> runway facts</span>
-            <span><strong>Risk</strong> agent schedulers</span>
-          </div>
           <div className="daily-report-callout">
-            <span>Next useful unit</span>
+            <span>Next step</span>
             <strong>Build Module 1. Do not expand the offer again before the course moves.</strong>
           </div>
         </div>
