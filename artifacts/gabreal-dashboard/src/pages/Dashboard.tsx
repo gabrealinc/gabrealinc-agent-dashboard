@@ -237,11 +237,11 @@ const AGENTS: Agent[] = [
     last: "Oct 16 · Evening Closeout · Complete",
     notionUrl: "https://app.notion.com/p/3fca4fa77eaf8136ac36c76815764420?pvs=204",
     report: {
-      summary: "Offer guardrails and course direction sharpened; creative and care work moved; course production, runway facts, and scheduler reliability remain the main open loops.",
+      summary: "Stop changing the course and offers for now. Build Module 1 next. You also need to check how much financial runway you have and fix the agents that are not reporting correctly.",
       items: [
-        { time: "Oct 16", label: "Course direction", note: "Build Your AI OS remains evergreen and self-paced. The next useful unit is Module 1.", tag: "ACTION" },
-        { time: "Oct 16", label: "Runway", note: "Financial runway remains the highest personal-business risk and needs facts.", tag: "URGENT" },
-        { time: "Oct 16", label: "Agent reliability", note: "Scheduler reliability remains an open issue across several agents.", tag: "FLAG" },
+        { time: "Oct 16", label: "Build the course", note: "The course plan is decided. Build Module 1 next.", tag: "ACTION" },
+        { time: "Oct 16", label: "Check your finances", note: "Look at the real numbers so you know how much financial runway you have.", tag: "URGENT" },
+        { time: "Oct 16", label: "Fix agent reports", note: "Several agents are not sending their reports correctly.", tag: "FLAG" },
       ],
     },
   },
@@ -600,56 +600,20 @@ const COMMS_MOCK: CommItem[] = [
 
 // ─── View: HOME ───────────────────────────────────────────────────────────────
 function DailyReportCard({ fullPage = false, onOpenFullReport }: { fullPage?: boolean; onOpenFullReport?: () => void }) {
-  const [showReports, setShowReports] = useState(false);
-  const peggy = AGENTS.find(agent => agent.name === "Peggy") ?? AGENTS[0];
-
   return (
     <div className={`card daily-report-card${fullPage ? " daily-report-card-full" : ""}`}>
       <div className="card-header daily-report-card-header">
         <div>
-          <div className="card-label">Latest Verified Report</div>
+          <div className="card-label">Peggy's Latest Report</div>
           <div className="card-subtitle" style={{ marginBottom: 0 }}>Peggy · Evening Closeout · Oct 16</div>
         </div>
-        <div className="daily-report-actions">
-          {onOpenFullReport && (
-            <button className="daily-report-full" type="button" onClick={onOpenFullReport}>Full report</button>
-          )}
-          <button className="daily-report-flip" type="button" onClick={() => setShowReports(value => !value)}>
-            {showReports ? "Overview" : "Agent reports"} ↻
-          </button>
-        </div>
+        {onOpenFullReport && (
+          <button className="daily-report-full" type="button" onClick={onOpenFullReport}>Open report</button>
+        )}
       </div>
-
-      {!showReports ? (
-        <div className="daily-report-overview">
-          <p>{peggy.report.summary}</p>
-          <div className="daily-report-callout">
-            <span>Next step</span>
-            <strong>Build Module 1. Do not expand the offer again before the course moves.</strong>
-          </div>
-        </div>
-      ) : (
-        <div className="daily-agent-reports">
-          {AGENTS.map(agent => (
-            <details className="daily-agent-report" key={agent.name}>
-              <summary>
-                <span><i className={`agent-dot dot-${agent.status}`} />{agent.name}</span>
-                <small>{agent.role}</small>
-              </summary>
-              <p>{agent.report.summary}</p>
-              {agent.notionUrl && <a href={agent.notionUrl} target="_blank" rel="noreferrer" className="card-link">Open verified report in Notion ↗</a>}
-              <div className="daily-agent-items">
-                {agent.report.items.map((item, index) => (
-                  <div key={`${agent.name}-${index}`}>
-                    <strong>{item.label}</strong>
-                    <span>{item.note}</span>
-                  </div>
-                ))}
-              </div>
-            </details>
-          ))}
-        </div>
-      )}
+      <div className="daily-report-overview">
+        <p>The report is minimized. Open it to read Peggy's complete report.</p>
+      </div>
     </div>
   );
 }
@@ -657,10 +621,9 @@ function DailyReportCard({ fullPage = false, onOpenFullReport }: { fullPage?: bo
 function HomeView() {
   const [calOpen, setCalOpen] = useState(false);
   const closeCalendar = useCallback(() => setCalOpen(false), []);
-  const [agentQuickView, setAgentQuickView] = useState<Agent | null>(() => {
-    if (typeof window === "undefined" || window.sessionStorage.getItem("peggy-report-seen")) return null;
-    return AGENTS.find(agent => agent.name === "Peggy") ?? null;
-  });
+  const [agentQuickView, setAgentQuickView] = useState<Agent | null>(() =>
+    AGENTS.find(agent => agent.name === "Peggy") ?? null
+  );
   const [schedule, setSchedule] = useState<{ time: string; event: string }[]>(SCHEDULE_FALLBACK);
   const [scheduleLoading, setScheduleLoading] = useState(true);
   const [comms, setComms] = useState<CommItem[]>(COMMS_MOCK);
@@ -1140,10 +1103,7 @@ function HomeView() {
 
       {calOpen && <CalendarModal onClose={closeCalendar} />}
       {agentQuickView && (agentQuickView.name === "Peggy" ? (
-        <PeggyDailyReportModal onClose={() => {
-          window.sessionStorage.setItem("peggy-report-seen", "true");
-          setAgentQuickView(null);
-        }} />
+        <PeggyDailyReportModal onClose={() => setAgentQuickView(null)} />
       ) : (
         <AgentQuickView agent={agentQuickView} onClose={() => setAgentQuickView(null)} />
       ))}
@@ -1177,41 +1137,36 @@ function PeggyDailyReportModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="peggy-report-scroll">
-          <section className="peggy-report-section peggy-report-intro">
-            <div className="aqv-section-label">Executive Summary</div>
-            <p>{peggy.report.summary}</p>
-          </section>
-
           <section className="peggy-report-section">
-            <div className="aqv-section-label">Today in Review</div>
+            <div className="aqv-section-label">What Got Done</div>
             <div className="peggy-priority-list">
-              <div><span>1</span><p><strong>Offer guardrails got clearer.</strong>From Scratch stays $27.99. Custom AI builds begin at $5,000, with $5,000 or $10,000 retainers. The $350 strategy session and $1,250 roadmap remain proposals, not launched offers.</p></div>
-              <div><span>2</span><p><strong>The course direction is set.</strong>Build Your AI OS remains evergreen and self-paced, with a $252 course plus a $45 Vault for a $297 product ladder.</p></div>
-              <div><span>3</span><p><strong>Creative and care work moved.</strong>The From Scratch social post was shared, the family essay stayed in revision, and the Gabby Learnings timeline was updated through October 15.</p></div>
+              <div><span>1</span><p><strong>You decided your prices.</strong>From Scratch stays $27.99. Custom AI projects start at $5,000. The strategy session and roadmap are only ideas for now.</p></div>
+              <div><span>2</span><p><strong>You decided what the course is.</strong>Build Your AI OS will be a self-paced course. The course is $252 and the optional Vault is $45.</p></div>
+              <div><span>3</span><p><strong>You made progress on your writing.</strong>You shared the From Scratch post, revised the family essay, and updated your personal timeline.</p></div>
             </div>
           </section>
 
           <section className="peggy-report-section">
             <div className="aqv-section-label">Still Open</div>
             <div className="peggy-priority-list">
-              <div><span>1</span><p><strong>Build Your AI Operating System is overdue.</strong>The next useful unit is Module 1.</p></div>
-              <div><span>2</span><p><strong>Offer research is unfinished.</strong>Episode 4 may also have a status mismatch between publishing and the task record.</p></div>
-              <div><span>3</span><p><strong>The writing backlog remains open.</strong>The family essay, LinkedIn launch post, research-content system, and several Substack ideas still need a next step.</p></div>
+              <div><span>1</span><p><strong>Build Module 1.</strong>The course plan is done. It is time to make the first module.</p></div>
+              <div><span>2</span><p><strong>Check Episode 4.</strong>It may already be published even though Notion still shows it as unfinished.</p></div>
+              <div><span>3</span><p><strong>Your writing can wait.</strong>The family essay, LinkedIn post, and Substack ideas are still there, but they do not need your attention this week.</p></div>
             </div>
           </section>
 
           <section className="peggy-report-section">
             <div className="aqv-section-label">Needs Your Attention</div>
             <div className="peggy-priority-list">
-              <div><span>1</span><p><strong>Financial runway.</strong>This remains the highest personal-business risk. Peggy recommended a capped 30-minute facts block.</p></div>
-              <div><span>2</span><p><strong>Agent scheduler reliability.</strong>Several agent reporting schedules are missing, stale, or blocked.</p></div>
-              <div><span>3</span><p><strong>Loose ends.</strong>Shahira's volunteer reply, Google agentic OAuth and Tasks grounding decisions, and Canva/Substack email changes still need confirmation.</p></div>
+              <div><span>1</span><p><strong>Look at your real financial numbers.</strong>Spend 30 minutes checking how much money and time you have before you need more income.</p></div>
+              <div><span>2</span><p><strong>Fix the agent reports.</strong>Several agents have stopped sending reports or are sending old ones.</p></div>
+              <div><span>3</span><p><strong>Clear a few loose ends later.</strong>There are a few replies and setup decisions waiting, but they are not the main priority.</p></div>
             </div>
           </section>
 
           <section className="peggy-report-section">
             <div className="aqv-section-label">Waiting On</div>
-            <p>Kea is reviewing the website proposal. The Midnight agent work is blocked on source inputs. From Scratch print production is waiting on publisher review.</p>
+            <p>Kea is reviewing the website proposal. Midnight cannot move forward until it receives the missing source information. The From Scratch print edition is waiting for the publisher.</p>
           </section>
 
           <section className="peggy-report-section">
@@ -1233,8 +1188,8 @@ function PeggyDailyReportModal({ onClose }: { onClose: () => void }) {
           </section>
 
           <section className="peggy-report-section peggy-report-bottom-line">
-            <div className="aqv-section-label">The Close</div>
-            <p>Strategic clarification, creative progress, and family care all moved. Let the next day be human-sized.</p>
+            <div className="aqv-section-label">Bottom Line</div>
+            <p>You made the decisions. Now stop planning and build Module 1.</p>
             <a href="https://app.notion.com/p/3fca4fa77eaf8136ac36c76815764420?pvs=204" target="_blank" rel="noreferrer" className="card-link">Open Peggy's full source report in Notion ↗</a>
           </section>
         </div>
