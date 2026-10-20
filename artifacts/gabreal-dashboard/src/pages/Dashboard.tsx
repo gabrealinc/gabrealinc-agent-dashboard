@@ -2255,8 +2255,37 @@ const VIEWS: { id: View; label: string }[] = [
   { id: "agents", label: "Agents" },
 ];
 
+function RelaxingMode({ onClose }: { onClose: () => void }) {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="relaxing-mode" role="dialog" aria-modal="true" aria-label="Relaxing mode">
+      <div className="relaxing-water" aria-hidden="true" />
+
+      <div className="relaxing-center">
+        <time className="relaxing-time" dateTime={now.toISOString()}>
+          {now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+        </time>
+        <div className="relaxing-date">
+          {now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+        </div>
+      </div>
+
+      <button className="relaxing-exit" type="button" onClick={onClose} aria-label="Exit relaxing mode">
+        Exit relaxing mode
+      </button>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [view, setView] = useState<View>("home");
+  const [relaxing, setRelaxing] = useState(false);
 
   // ── Agent health — fetched at Dashboard level so banner spans all tabs ──────
   const [healthData, setHealthData]           = useState<AgentHealth[]>([]);
@@ -2284,6 +2313,46 @@ export default function Dashboard() {
 
   useEffect(() => { fetchHealth(); }, [fetchHealth]);
 
+  useEffect(() => {
+    if (!relaxing) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setRelaxing(false);
+    };
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) setRelaxing(false);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, [relaxing]);
+
+  const enterRelaxingMode = async () => {
+    setRelaxing(true);
+    try {
+      if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
+    } catch {
+      // The calm screen still works when a browser blocks native fullscreen.
+    }
+  };
+
+  const exitRelaxingMode = async () => {
+    setRelaxing(false);
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+    } catch {
+      // Closing the overlay is enough if the browser handles fullscreen itself.
+    }
+  };
+
   const redAgents = healthData.filter(a => a.healthStatus === "red");
 
   return (
@@ -2293,6 +2362,9 @@ export default function Dashboard() {
           <div className="nav-brand">Gab Real Inc</div>
           <div className="nav-top-right">
             <div className="nav-date">{formatDate()}</div>
+            <button className="relax-button" type="button" onClick={enterRelaxingMode}>
+              Relax
+            </button>
           </div>
         </div>
         <div className="nav-tabs">
@@ -2345,6 +2417,8 @@ export default function Dashboard() {
         {view === "substack"     && <WritingCornerView />}
         {view === "agents"       && <AgentsView />}
       </main>
+
+      {relaxing && <RelaxingMode onClose={exitRelaxingMode} />}
     </div>
   );
 }

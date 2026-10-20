@@ -135,6 +135,127 @@ body {
   font-weight: 500;
   font-family: 'Inter', sans-serif;
 }
+.relax-button {
+  background: rgba(255, 255, 255, 0.44);
+  border: 1px solid rgba(164, 132, 186, 0.34);
+  border-radius: 999px;
+  color: var(--text-soft);
+  cursor: pointer;
+  font: 600 11px/1 'Inter', sans-serif;
+  padding: 8px 12px;
+  transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+}
+.relax-button:hover {
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--text);
+  transform: translateY(-1px);
+}
+
+/* ─── RELAXING MODE ──────────────────────────────────────────── */
+.relaxing-mode {
+  align-items: center;
+  background: #48bdc8;
+  color: #173d49;
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  overflow: hidden;
+  position: fixed;
+  z-index: 1000;
+}
+.relaxing-mode::before {
+  background: linear-gradient(180deg, rgba(25, 119, 131, 0.05), rgba(15, 99, 113, 0.12));
+  content: "";
+  inset: 0;
+  position: absolute;
+  z-index: 1;
+}
+.relaxing-water {
+  background: url('/relaxing-water-v1.png') center center / cover no-repeat;
+  filter: saturate(0.9) brightness(0.98);
+  inset: -6%;
+  position: absolute;
+  transform: scale(1.06);
+  will-change: transform, filter;
+  animation: relaxing-water-drift 26s ease-in-out infinite alternate;
+}
+.relaxing-water::after {
+  background: url('/relaxing-water-v1.png') 58% 44% / 108% 108% no-repeat;
+  content: "";
+  filter: blur(2px) brightness(1.08);
+  inset: 0;
+  mix-blend-mode: soft-light;
+  opacity: 0.28;
+  position: absolute;
+  transform: scale(1.04);
+  will-change: transform, opacity;
+  animation: relaxing-water-shimmer 18s ease-in-out infinite alternate;
+}
+
+@keyframes relaxing-water-drift {
+  0% { transform: scale(1.06) translate3d(-1.2%, -0.8%, 0) rotate(-0.2deg); filter: saturate(0.88) brightness(0.97); }
+  50% { transform: scale(1.09) translate3d(0.8%, 0.5%, 0) rotate(0.15deg); filter: saturate(0.94) brightness(1.01); }
+  100% { transform: scale(1.07) translate3d(1.1%, -0.3%, 0) rotate(-0.1deg); filter: saturate(0.9) brightness(0.98); }
+}
+
+@keyframes relaxing-water-shimmer {
+  0% { opacity: 0.2; transform: scale(1.04) translate3d(1%, -0.7%, 0); }
+  50% { opacity: 0.34; transform: scale(1.07) translate3d(-0.8%, 0.6%, 0); }
+  100% { opacity: 0.24; transform: scale(1.05) translate3d(0.5%, 0.9%, 0); }
+}
+.relaxing-center {
+  position: relative;
+  text-align: center;
+  text-shadow: 0 1px 28px rgba(226, 255, 255, 0.82);
+  transform: translateY(-2vh);
+  z-index: 2;
+}
+.relaxing-time {
+  display: block;
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(58px, 10vw, 118px);
+  font-weight: 400;
+  letter-spacing: -0.045em;
+  line-height: 1;
+}
+.relaxing-date {
+  font-size: clamp(12px, 1.3vw, 16px);
+  letter-spacing: 0.13em;
+  margin-top: 14px;
+  opacity: 0.68;
+  text-transform: uppercase;
+}
+.relaxing-exit {
+  background: rgba(250, 252, 248, 0.38);
+  border: 1px solid rgba(64, 88, 84, 0.22);
+  border-radius: 999px;
+  bottom: 28px;
+  color: rgba(42, 66, 67, 0.72);
+  cursor: pointer;
+  font: 600 11px/1 'Inter', sans-serif;
+  letter-spacing: 0.02em;
+  padding: 10px 14px;
+  position: absolute;
+  right: 28px;
+  transition: background 160ms ease, color 160ms ease;
+  z-index: 2;
+}
+.relaxing-exit:hover {
+  background: rgba(250, 252, 248, 0.72);
+  color: #2a4243;
+}
+
+@media (max-width: 600px) {
+  .nav-top-right { gap: 8px; }
+  .nav-date { display: none; }
+  .relaxing-exit { bottom: 18px; right: 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .relax-button { transition: none; }
+  .relaxing-water,
+  .relaxing-water::after { animation: none; }
+}
 
 /* ─── MAIN ────────────────────────────────────────────────────── */
 .main {
