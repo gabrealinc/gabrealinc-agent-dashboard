@@ -234,14 +234,14 @@ const AGENTS: Agent[] = [
   {
     name: "Peggy", role: "Executive Partner", status: "active",
     desc: "Latest verified Peggy report from Notion.",
-    last: "Oct 16 · Evening Closeout · Complete",
-    notionUrl: "https://app.notion.com/p/3fca4fa77eaf8136ac36c76815764420?pvs=204",
+    last: "Oct 19 · Evening Closeout · Complete",
+    notionUrl: "https://app.notion.com/p/3ffa4fa77eaf81e38054c5dbfd675d7a?pvs=204",
     report: {
-      summary: "Stop changing the course and offers for now. Build Module 1 next. You also need to check how much financial runway you have and fix the agents that are not reporting correctly.",
+      summary: "Peggy's complete October 19 evening closeout is available to read.",
       items: [
-        { time: "Oct 16", label: "Build the course", note: "The course plan is decided. Build Module 1 next.", tag: "ACTION" },
-        { time: "Oct 16", label: "Check your finances", note: "Look at the real numbers so you know how much financial runway you have.", tag: "URGENT" },
-        { time: "Oct 16", label: "Fix agent reports", note: "Several agents are not sending their reports correctly.", tag: "FLAG" },
+        { time: "Oct 19", label: "Build the course", note: "Start with Module 1 and make the course tangible.", tag: "ACTION" },
+        { time: "Oct 19", label: "Reply to Chris", note: "Reschedule the AI sync and reconcile the remaining meeting credit.", tag: "URGENT" },
+        { time: "Oct 19", label: "Confirm the cruise task", note: "Verify whether the booking task is still open.", tag: "FLAG" },
       ],
     },
   },
@@ -268,7 +268,7 @@ const AGENTS: Agent[] = [
 ];
 
 const ACTIVITY_LOG = [
-  { time: "Oct 16", color: "#60C070", text: <><strong>Peggy</strong> · Evening Closeout complete in Notion</> },
+  { time: "Oct 19", color: "#60C070", text: <><strong>Peggy</strong> · Evening Closeout complete in Notion</> },
   { time: "Oct 16", color: "#60C070", text: <><strong>Amber</strong> · Four communication runs complete</> },
   { time: "Oct 15", color: "#60C070", text: <><strong>Nancy</strong> · Research intelligence report complete</> },
   { time: "Oct 13", color: "#E8C040", text: <><strong>Milton</strong> · Meeting QA work remains blocked</> },
@@ -605,14 +605,11 @@ function DailyReportCard({ fullPage = false, onOpenFullReport }: { fullPage?: bo
       <div className="card-header daily-report-card-header">
         <div>
           <div className="card-label">Peggy's Latest Report</div>
-          <div className="card-subtitle" style={{ marginBottom: 0 }}>Peggy · Evening Closeout · Oct 16</div>
+          <div className="card-subtitle" style={{ marginBottom: 0 }}>Peggy · Evening Closeout · Oct 19 · Complete</div>
         </div>
         {onOpenFullReport && (
-          <button className="daily-report-full" type="button" onClick={onOpenFullReport}>Open report</button>
+          <button className="daily-report-full" type="button" onClick={onOpenFullReport}>Read full report</button>
         )}
-      </div>
-      <div className="daily-report-overview">
-        <p>The report is minimized. Open it to read Peggy's complete report.</p>
       </div>
     </div>
   );
@@ -1121,9 +1118,6 @@ const TAG_STYLES: Record<string, { bg: string; color: string; label: string }> =
 };
 
 function PeggyDailyReportModal({ onClose }: { onClose: () => void }) {
-  const peggy = AGENTS.find(agent => agent.name === "Peggy") ?? AGENTS[0];
-  const handoffs = AGENTS.filter(agent => agent.name !== "Peggy");
-
   return (
     <div className="aqv-overlay" onClick={onClose}>
       <div className="aqv-panel peggy-report-modal" onClick={event => event.stopPropagation()}>
@@ -1131,72 +1125,74 @@ function PeggyDailyReportModal({ onClose }: { onClose: () => void }) {
           <div>
             <div className="peggy-report-eyebrow">Latest verified Notion report</div>
             <div className="aqv-name">Peggy · Evening Closeout</div>
-            <div className="aqv-role">Friday, October 16, 2026 · Complete</div>
+            <div className="aqv-role">Monday, October 19, 2026 · Complete</div>
           </div>
           <button className="aqv-close" onClick={onClose} aria-label="Minimize Peggy's report">✕</button>
         </div>
 
         <div className="peggy-report-scroll">
           <section className="peggy-report-section">
-            <div className="aqv-section-label">What Got Done</div>
+            <div className="aqv-section-label">Today in Review</div>
             <div className="peggy-priority-list">
-              <div><span>1</span><p><strong>You decided your prices.</strong>From Scratch stays $27.99. Custom AI projects start at $5,000. The strategy session and roadmap are only ideas for now.</p></div>
-              <div><span>2</span><p><strong>You decided what the course is.</strong>Build Your AI OS will be a self-paced course. The course is $252 and the optional Vault is $45.</p></div>
-              <div><span>3</span><p><strong>You made progress on your writing.</strong>You shared the From Scratch post, revised the family essay, and updated your personal timeline.</p></div>
+              <div><span>1</span><p><strong>Midnight team session.</strong>The 67-minute working session produced an Inbox Manager. Office 365 permissions and testing are still required.</p></div>
+              <div><span>2</span><p><strong>Session recap.</strong>The recap was emailed at 1:25 PM, and Pamela replied positively.</p></div>
+              <div><span>3</span><p><strong>Family emails.</strong>Messages went to Shahira and Lynne, and Shahira acknowledged hers.</p></div>
+            </div>
+          </section>
+
+          <section className="peggy-report-section">
+            <div className="aqv-section-label">What Moved</div>
+            <div className="peggy-priority-list">
+              <div><span>1</span><p><strong>Hands-on education feels energizing.</strong>The team session reinforced that selective, engaged teaching is work you enjoy.</p></div>
+              <div><span>2</span><p><strong>The meeting-manager model sharpened.</strong>A shared model for managing meetings became clearer.</p></div>
+              <div><span>3</span><p><strong>Creative direction developed.</strong>You explored Archie's visual direction and the independent-thinking essay.</p></div>
             </div>
           </section>
 
           <section className="peggy-report-section">
             <div className="aqv-section-label">Still Open</div>
             <div className="peggy-priority-list">
-              <div><span>1</span><p><strong>Build Module 1.</strong>The course plan is done. It is time to make the first module.</p></div>
-              <div><span>2</span><p><strong>Check Episode 4.</strong>It may already be published even though Notion still shows it as unfinished.</p></div>
-              <div><span>3</span><p><strong>Your writing can wait.</strong>The family essay, LinkedIn post, and Substack ideas are still there, but they do not need your attention this week.</p></div>
-            </div>
-          </section>
-
-          <section className="peggy-report-section">
-            <div className="aqv-section-label">Needs Your Attention</div>
-            <div className="peggy-priority-list">
-              <div><span>1</span><p><strong>Look at your real financial numbers.</strong>Spend 30 minutes checking how much money and time you have before you need more income.</p></div>
-              <div><span>2</span><p><strong>Fix the agent reports.</strong>Several agents have stopped sending reports or are sending old ones.</p></div>
-              <div><span>3</span><p><strong>Clear a few loose ends later.</strong>There are a few replies and setup decisions waiting, but they are not the main priority.</p></div>
+              <div><span>1</span><p><strong>Course production.</strong>All eight modules remain in progress. Module 1 is the entry point, and the September 25 date in Notion is stale.</p></div>
+              <div><span>2</span><p><strong>Midnight status.</strong>The recap was sent. Any future work should remain separate and unapproved until scope is confirmed.</p></div>
+              <div><span>3</span><p><strong>Meeting credit.</strong>Billing appears to show one credit remaining because Chris rescheduled.</p></div>
+              <div><span>4</span><p><strong>Other open work.</strong>The cruise booking is unverified, and several writing tasks appear stale.</p></div>
             </div>
           </section>
 
           <section className="peggy-report-section">
             <div className="aqv-section-label">Waiting On</div>
-            <p>Kea is reviewing the website proposal. Midnight cannot move forward until it receives the missing source information. The From Scratch print edition is waiting for the publisher.</p>
+            <p>Midnight is waiting on Office 365 authorization, testing, and client-success requirements. Kea's proposal decision and payment are also still pending.</p>
           </section>
 
           <section className="peggy-report-section">
-            <div className="aqv-section-label">Agent Reports Peggy Reviewed</div>
-            <div className="peggy-handoffs">
-              {handoffs.map(agent => (
-                <details key={agent.name}>
-                  <summary><span>{agent.name}</span><small>{agent.role}</small></summary>
-                  <p>{agent.report.summary}</p>
-                  {agent.notionUrl && <a href={agent.notionUrl} target="_blank" rel="noreferrer" className="card-link">Open in Notion ↗</a>}
-                  {agent.report.items.map((item, index) => (
-                    <div className="peggy-handoff-item" key={`${agent.name}-${index}`}>
-                      <strong>{item.label}</strong><span>{item.note}</span>
-                    </div>
-                  ))}
-                </details>
-              ))}
+            <div className="aqv-section-label">Needs Attention</div>
+            <div className="peggy-priority-list">
+              <div><span>1</span><p><strong>Reschedule Chris.</strong>Find a Wednesday or Thursday time and reconcile the remaining credit.</p></div>
+              <div><span>2</span><p><strong>Lovable deletion notice.</strong>The deletion window is 30 days.</p></div>
+              <div><span>3</span><p><strong>Keep Midnight scope clear.</strong>Proposed additions remain pending until they are approved.</p></div>
+              <div><span>4</span><p><strong>Notion AI credits.</strong>The change begins November 2 and does not need action today.</p></div>
+            </div>
+          </section>
+
+          <section className="peggy-report-section">
+            <div className="aqv-section-label">Tomorrow's Handoff</div>
+            <div className="peggy-priority-list">
+              <div><span>1</span><p><strong>Morning course writing.</strong>Make the course tangible by starting Module 1.</p></div>
+              <div><span>2</span><p><strong>Reply to Chris.</strong>Reschedule the session and reconcile the credit.</p></div>
+              <div><span>3</span><p><strong>Confirm the cruise task.</strong>Verify whether it is still open.</p></div>
             </div>
           </section>
 
           <section className="peggy-report-section peggy-report-bottom-line">
-            <div className="aqv-section-label">Bottom Line</div>
-            <p>You made the decisions. Now stop planning and build Module 1.</p>
-            <a href="https://app.notion.com/p/3fca4fa77eaf8136ac36c76815764420?pvs=204" target="_blank" rel="noreferrer" className="card-link">Open Peggy's full source report in Notion ↗</a>
+            <div className="aqv-section-label">The Close</div>
+            <p>Today's evidence says engaged team teaching gives you energy. The next move is to make the course tangible instead of redesigning the business again.</p>
+            <a href="https://app.notion.com/p/3ffa4fa77eaf81e38054c5dbfd675d7a?pvs=204" target="_blank" rel="noreferrer" className="card-link">Open the source report in Notion ↗</a>
           </section>
         </div>
 
         <div className="aqv-footer peggy-report-footer">
-          <span className="aqv-footer-hint">Close to minimize this verified report into the overview.</span>
-          <button type="button" className="peggy-minimize" onClick={onClose}>Minimize report</button>
+          <span className="aqv-footer-hint">Peggy · October 19 · Complete</span>
+          <button type="button" className="peggy-minimize" onClick={onClose}>Close report</button>
         </div>
       </div>
     </div>
