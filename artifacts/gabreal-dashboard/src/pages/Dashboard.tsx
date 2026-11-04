@@ -601,6 +601,12 @@ type DayReport = {
   date: string;
   createdAt: string;
   url: string;
+  blocks?: ReportBlock[];
+};
+
+type ReportBlock = {
+  type: "heading" | "paragraph" | "list-item";
+  text: string;
 };
 
 type DaySummary = {
@@ -615,7 +621,49 @@ const VERIFIED_DAY_SUMMARY_SNAPSHOT: DaySummary = {
   focus: "Keep the day humane, use the writing hour well, enforce Midnight’s payment boundary, and move only the highest-value client and Module 2 work.",
   updatedAt: "2026-11-04T01:03:54Z",
   reports: [
-    { id: "40ea4fa7-7eaf-8186-b7c0-e21ee5a9d31e", agent: "Peggy", title: "Peggy - Evening Executive Closeout - 3 November 2026 (PT)", type: "Evening Brief", status: "Complete", summary: "Gab Real's three-path offer model is now approved and documented. Luxx changes are committed but not live, Midnight remains unpaid, and today's From Scratch and Carol sessions produced bounded next steps without authorizing new scope.", date: "2026-11-03", createdAt: "2026-11-04T01:03:54Z", url: "https://app.notion.com/40ea4fa77eaf8186b7c0e21ee5a9d31e" },
+    {
+      id: "40ea4fa7-7eaf-8186-b7c0-e21ee5a9d31e", agent: "Peggy", title: "Peggy - Evening Executive Closeout - 3 November 2026 (PT)", type: "Evening Brief", status: "Complete", summary: "Gab Real's three-path offer model is now approved and documented. Luxx changes are committed but not live, Midnight remains unpaid, and today's From Scratch and Carol sessions produced bounded next steps without authorizing new scope.", date: "2026-11-03", createdAt: "2026-11-04T01:03:54Z", url: "https://app.notion.com/40ea4fa77eaf8186b7c0e21ee5a9d31e",
+      blocks: [
+        { type: "heading", text: "Today in Review" },
+        { type: "paragraph", text: "Today gave your business a clearer shape while several client projects moved forward behind deliberate scope boundaries." },
+        { type: "paragraph", text: "The biggest strategic outcome was the approved three-path structure for the Gab Real website: Learn, Bring me in, and Build with me." },
+        { type: "paragraph", text: "Luxx is now documented as the reference model for Build with me: audit and blueprint, custom build and testing, then recurring maintenance. Final pricing and package details remain undecided." },
+        { type: "paragraph", text: "The revised Luxx protocol-email default, editable per-client composer, cleaner filtering, and internal seven-day treatment-end alert were committed to GitHub. They are not live because the Vercel deployment failed, so production testing remains blocked until the Git integration is reconnected." },
+        { type: "paragraph", text: "The From Scratch session established 112 reported book sales and active IngramSpark distribution. The Carol call clarified requested work without treating it as authorized implementation. No Task has a verified November 3 Completed Date." },
+        { type: "heading", text: "What Moved" },
+        { type: "list-item", text: "Gab Real's offer model is finally coherent. Learn / Bring me in / Build with me is now the approved website structure." },
+        { type: "list-item", text: "Luxx advanced at the code level. Deployment, not development intent, is the current blocker." },
+        { type: "list-item", text: "From Scratch reached a concrete milestone with 112 books sold and a proof copy in process." },
+        { type: "list-item", text: "The Inspirit Alchemy agreement is now fully signed by all parties." },
+        { type: "list-item", text: "Peggy's Morning Brief produced a complete report today, although the next unattended run still needs to prove reliability." },
+        { type: "heading", text: "Still Open" },
+        { type: "list-item", text: "Luxx deployment: reconnect the repository in Vercel, deploy, test production behavior, and only then revise or send the Aissia draft." },
+        { type: "list-item", text: "Luxx defect: Lisa McManus's repeat intake is not populating for protocol generation." },
+        { type: "list-item", text: "Midnight billing: the prior package is exhausted and the $1,125 renewal invoice remains unpaid." },
+        { type: "list-item", text: "Kelly-Ann access: Claude Biz needs administrator approval, and expected Notion content is not visible." },
+        { type: "list-item", text: "Carol / Aftermath: new website, resources, and flyer work require a scope-and-payment decision." },
+        { type: "list-item", text: "Build Your AI Operating System remains High priority and In Progress." },
+        { type: "list-item", text: "The approved website positioning still needs to be written into the live site." },
+        { type: "heading", text: "Waiting On" },
+        { type: "list-item", text: "Aissia: confirmation of the assessment wording and reminder details." },
+        { type: "list-item", text: "Betsy: payment of the $1,125 Midnight invoice." },
+        { type: "list-item", text: "Kea: a decision on the $3,500 website proposal." },
+        { type: "list-item", text: "Carol: settled-payment evidence and approval of the bounded paid scope." },
+        { type: "list-item", text: "Ryan: the From Scratch outreach and promotional work he owns." },
+        { type: "heading", text: "Needs Your Attention" },
+        { type: "list-item", text: "Finish Luxx in the right order: restore the Git connection, deploy, test the included fixes, and investigate Lisa's intake issue." },
+        { type: "list-item", text: "Hold the Midnight payment boundary and verify payment before another billable session." },
+        { type: "list-item", text: "Keep Carol's work gated until cleared payment and the exact paid scope are confirmed." },
+        { type: "list-item", text: "Protect active infrastructure by checking Elle's Supabase project, inactive Google OAuth clients, and the Lovable deletion." },
+        { type: "list-item", text: "Update stale status records so the fully signed Inspirit agreement no longer drives attention." },
+        { type: "heading", text: "Tomorrow's Handoff" },
+        { type: "list-item", text: "Use the first focused block for the Gab Real website and turn the three-path structure into a concrete outline and calls to action." },
+        { type: "list-item", text: "Close one client-operational loop before noon: Luxx production verification first, Midnight payment and access second." },
+        { type: "list-item", text: "Keep the afternoon light. One meaningful website or course outcome is enough." },
+        { type: "heading", text: "The Close" },
+        { type: "paragraph", text: "Today you stopped treating your business as a pile of unrelated services and named the model you actually want: teach, advise, and build useful systems that can become durable client relationships. The discipline now is to finish and verify what is already in motion before turning that clarity into more simultaneous work." },
+      ],
+    },
     { id: "40da4fa7-7eaf-819c-a312-c46239dc2e6d", agent: "Milton", title: "Milton - Daily Log - 3 November 2026 (PT)", type: "Daily Work Log", status: "Complete", summary: "November 3: both new Fireflies business meetings enriched and Reviewed; Carol scope/payment decision and Canva identity correction logged; one IngramSpark Task/approval proposed; required writes verified.", date: "2026-11-03", createdAt: "2026-11-03T23:30:48Z", url: "https://app.notion.com/40da4fa77eaf819ca312c46239dc2e6d" },
     { id: "40da4fa7-7eaf-8196-8774-f5a7df24ed9d", agent: "Elle", title: "Elle - Daily Alignment - 3 November 2026 (PT)", type: "Daily Alignment", status: "Complete", summary: "Today: use the 11 a.m. PT From Scratch writing hour, verify Midnight's $1,125 payment before another session, and leave space to recover after yesterday's ALS appointment and Manny's vet emergency.", date: "2026-11-03", createdAt: "2026-11-03T15:38:48Z", url: "https://app.notion.com/40da4fa77eaf81968774f5a7df24ed9d" },
     { id: "40da4fa7-7eaf-81cd-b5a5-fb956c5ab5aa", agent: "Peggy", title: "Morning Executive Brief - November 3, 2026", type: "Morning Brief", status: "Complete", summary: "Keep the day humane, use the writing hour well, enforce Midnight’s payment boundary, and move only the highest-value client and Module 2 work.", date: "2026-11-03", createdAt: "2026-11-03T15:02:47Z", url: "https://app.notion.com/40da4fa77eaf81cdb5a5fb956c5ab5aa" },
@@ -650,6 +698,8 @@ function DailyReportCard({
   focus,
   loading,
   live,
+  hasPeggyReport,
+  onOpenPeggy,
   onRefresh,
 }: {
   meetingCount: number;
@@ -658,6 +708,8 @@ function DailyReportCard({
   focus: string;
   loading: boolean;
   live: boolean;
+  hasPeggyReport: boolean;
+  onOpenPeggy: () => void;
   onRefresh: () => void;
 }) {
   return (
@@ -669,7 +721,12 @@ function DailyReportCard({
             {loading ? "Checking your day…" : live ? "Live · refreshes every minute" : "Latest verified Notion snapshot · live sync paused"}
           </div>
         </div>
-        <RefreshBtn onClick={onRefresh} />
+        <div className="daily-report-actions">
+          {hasPeggyReport && (
+            <button className="daily-report-full" type="button" onClick={onOpenPeggy}>Open Peggy's report</button>
+          )}
+          <RefreshBtn onClick={onRefresh} />
+        </div>
       </div>
 
       <div className="day-summary-stats" aria-label="Today's totals">
@@ -716,6 +773,7 @@ function HomeView() {
   const [daySummary, setDaySummary] = useState<DaySummary>(() => daySummarySnapshot());
   const [daySummaryLoading, setDaySummaryLoading] = useState(true);
   const [daySummaryLive, setDaySummaryLive] = useState(false);
+  const [peggyReportOpen, setPeggyReportOpen] = useState(false);
   const [comms, setComms] = useState<CommItem[]>(COMMS_MOCK);
   const [commsLoading, setCommsLoading] = useState(true);
   const [commsFromNotion, setCommsFromNotion] = useState(false);
@@ -874,9 +932,23 @@ function HomeView() {
 
   const activeTaskCount = tasks.filter(task => isActiveTaskStatus(task.status)).length;
   const meetingCount = schedule.filter(item => !item.isAllDay).length;
+  const latestPeggyReport = daySummary.reports.find(report => report.agent === "Peggy");
   const dayFocus = daySummary.focus || (tasks[0]
     ? `You move “${tasks[0].name}” forward without making the day bigger.`
     : "You protect your attention and move the most important work forward.");
+
+  useEffect(() => {
+    if (!latestPeggyReport) return;
+    const dismissedReportId = window.localStorage.getItem("dashboard-dismissed-peggy-report-id");
+    if (dismissedReportId !== latestPeggyReport.id) setPeggyReportOpen(true);
+  }, [latestPeggyReport?.id]);
+
+  function closePeggyReport() {
+    if (latestPeggyReport) {
+      window.localStorage.setItem("dashboard-dismissed-peggy-report-id", latestPeggyReport.id);
+    }
+    setPeggyReportOpen(false);
+  }
 
   return (
     <div>
@@ -892,6 +964,8 @@ function HomeView() {
           focus={dayFocus}
           loading={daySummaryLoading}
           live={daySummaryLive}
+          hasPeggyReport={Boolean(latestPeggyReport)}
+          onOpenPeggy={() => setPeggyReportOpen(true)}
           onRefresh={() => loadDaySummary()}
         />
 
@@ -1232,8 +1306,11 @@ function HomeView() {
       </>}
 
       {calOpen && <CalendarModal onClose={closeCalendar} />}
+      {peggyReportOpen && latestPeggyReport && (
+        <PeggyDailyReportModal report={latestPeggyReport} onClose={closePeggyReport} />
+      )}
       {agentQuickView && (agentQuickView.name === "Peggy" ? (
-        <PeggyDailyReportModal onClose={() => setAgentQuickView(null)} />
+        latestPeggyReport ? <PeggyDailyReportModal report={latestPeggyReport} onClose={() => setAgentQuickView(null)} /> : null
       ) : (
         <AgentQuickView agent={agentQuickView} onClose={() => setAgentQuickView(null)} />
       ))}
@@ -1250,81 +1327,60 @@ const TAG_STYLES: Record<string, { bg: string; color: string; label: string }> =
   DONE:   { bg: "rgba(80,160,100,0.12)",  color: "#407840", label: "Done" },
 };
 
-function PeggyDailyReportModal({ onClose }: { onClose: () => void }) {
+function PeggyDailyReportModal({ report, onClose }: { report: DayReport; onClose: () => void }) {
+  const reportDate = report.date
+    ? new Date(`${report.date.slice(0, 10)}T12:00:00`).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })
+    : "Latest report";
+  const sections = (report.blocks ?? []).reduce<{ heading: string; paragraphs: string[]; items: string[] }[]>((all, block) => {
+    if (block.type === "heading") {
+      all.push({ heading: block.text, paragraphs: [], items: [] });
+      return all;
+    }
+    if (all.length === 0) all.push({ heading: "Report", paragraphs: [], items: [] });
+    const section = all[all.length - 1];
+    if (block.type === "list-item") section.items.push(block.text);
+    else section.paragraphs.push(block.text);
+    return all;
+  }, []);
+
   return (
     <div className="aqv-overlay" onClick={onClose}>
       <div className="aqv-panel peggy-report-modal" onClick={event => event.stopPropagation()}>
         <div className="aqv-header peggy-report-header">
           <div>
             <div className="peggy-report-eyebrow">Latest verified Notion report</div>
-            <div className="aqv-name">Peggy · Evening Closeout</div>
-            <div className="aqv-role">Monday, October 19, 2026 · Complete</div>
+            <div className="aqv-name">Peggy · {report.type}</div>
+            <div className="aqv-role">{reportDate}{report.status ? ` · ${report.status}` : ""}</div>
           </div>
           <button className="aqv-close" onClick={onClose} aria-label="Minimize Peggy's report">✕</button>
         </div>
 
         <div className="peggy-report-scroll">
-          <section className="peggy-report-section">
-            <div className="aqv-section-label">Today in Review</div>
-            <div className="peggy-priority-list">
-              <div><span>1</span><p><strong>Midnight team session.</strong>The 67-minute working session produced an Inbox Manager. Office 365 permissions and testing are still required.</p></div>
-              <div><span>2</span><p><strong>Session recap.</strong>The recap was emailed at 1:25 PM, and Pamela replied positively.</p></div>
-              <div><span>3</span><p><strong>Family emails.</strong>Messages went to Shahira and Lynne, and Shahira acknowledged hers.</p></div>
-            </div>
-          </section>
-
-          <section className="peggy-report-section">
-            <div className="aqv-section-label">What Moved</div>
-            <div className="peggy-priority-list">
-              <div><span>1</span><p><strong>Hands-on education feels energizing.</strong>The team session reinforced that selective, engaged teaching is work you enjoy.</p></div>
-              <div><span>2</span><p><strong>The meeting-manager model sharpened.</strong>A shared model for managing meetings became clearer.</p></div>
-              <div><span>3</span><p><strong>Creative direction developed.</strong>You explored Archie's visual direction and the independent-thinking essay.</p></div>
-            </div>
-          </section>
-
-          <section className="peggy-report-section">
-            <div className="aqv-section-label">Still Open</div>
-            <div className="peggy-priority-list">
-              <div><span>1</span><p><strong>Course production.</strong>All eight modules remain in progress. Module 1 is the entry point, and the September 25 date in Notion is stale.</p></div>
-              <div><span>2</span><p><strong>Midnight status.</strong>The recap was sent. Any future work should remain separate and unapproved until scope is confirmed.</p></div>
-              <div><span>3</span><p><strong>Meeting credit.</strong>Billing appears to show one credit remaining because Chris rescheduled.</p></div>
-              <div><span>4</span><p><strong>Other open work.</strong>The cruise booking is unverified, and several writing tasks appear stale.</p></div>
-            </div>
-          </section>
-
-          <section className="peggy-report-section">
-            <div className="aqv-section-label">Waiting On</div>
-            <p>Midnight is waiting on Office 365 authorization, testing, and client-success requirements. Kea's proposal decision and payment are also still pending.</p>
-          </section>
-
-          <section className="peggy-report-section">
-            <div className="aqv-section-label">Needs Attention</div>
-            <div className="peggy-priority-list">
-              <div><span>1</span><p><strong>Reschedule Chris.</strong>Find a Wednesday or Thursday time and reconcile the remaining credit.</p></div>
-              <div><span>2</span><p><strong>Lovable deletion notice.</strong>The deletion window is 30 days.</p></div>
-              <div><span>3</span><p><strong>Keep Midnight scope clear.</strong>Proposed additions remain pending until they are approved.</p></div>
-              <div><span>4</span><p><strong>Notion AI credits.</strong>The change begins November 2 and does not need action today.</p></div>
-            </div>
-          </section>
-
-          <section className="peggy-report-section">
-            <div className="aqv-section-label">Tomorrow's Handoff</div>
-            <div className="peggy-priority-list">
-              <div><span>1</span><p><strong>Morning course writing.</strong>Make the course tangible by starting Module 1.</p></div>
-              <div><span>2</span><p><strong>Reply to Chris.</strong>Reschedule the session and reconcile the credit.</p></div>
-              <div><span>3</span><p><strong>Confirm the cruise task.</strong>Verify whether it is still open.</p></div>
-            </div>
-          </section>
-
-          <section className="peggy-report-section peggy-report-bottom-line">
-            <div className="aqv-section-label">The Close</div>
-            <p>Today's evidence says engaged team teaching gives you energy. The next move is to make the course tangible instead of redesigning the business again.</p>
-            <a href="https://app.notion.com/p/3ffa4fa77eaf81e38054c5dbfd675d7a?pvs=204" target="_blank" rel="noreferrer" className="card-link">Open the source report in Notion ↗</a>
+          {sections.length === 0 ? (
+            <section className="peggy-report-section peggy-report-intro">
+              <div className="aqv-section-label">Report Summary</div>
+              <p>{report.summary}</p>
+            </section>
+          ) : sections.map((section, sectionIndex) => (
+            <section className={`peggy-report-section${sectionIndex === sections.length - 1 ? " peggy-report-bottom-line" : ""}`} key={`${section.heading}-${sectionIndex}`}>
+              <div className="aqv-section-label">{section.heading}</div>
+              {section.paragraphs.map((paragraph, index) => <p className="peggy-report-paragraph" key={index}>{paragraph}</p>)}
+              {section.items.length > 0 && (
+                <div className="peggy-priority-list">
+                  {section.items.map((item, index) => (
+                    <div key={index}><span>{index + 1}</span><p>{item}</p></div>
+                  ))}
+                </div>
+              )}
+            </section>
+          ))}
+          <section className="peggy-report-source">
+            <a href={report.url} target="_blank" rel="noreferrer" className="card-link">Open the source report in Notion ↗</a>
           </section>
         </div>
 
         <div className="aqv-footer peggy-report-footer">
-          <span className="aqv-footer-hint">Peggy · October 19 · Complete</span>
+          <span className="aqv-footer-hint">Peggy · {reportDate}{report.status ? ` · ${report.status}` : ""}</span>
           <button type="button" className="peggy-minimize" onClick={onClose}>Close report</button>
         </div>
       </div>

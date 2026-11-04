@@ -1714,6 +1714,9 @@ body {
   line-height: 1.7;
   margin: 0;
 }
+.peggy-report-section > .peggy-report-paragraph + .peggy-report-paragraph {
+  margin-top: 12px;
+}
 .peggy-report-intro > p {
   color: var(--text);
   font-family: 'Playfair Display', serif;
@@ -1806,6 +1809,9 @@ body {
 .peggy-handoff-item strong { color: var(--text); font-size: 11px; margin-bottom: 3px; }
 .peggy-handoff-item span { color: var(--text-soft); font-size: 10px; line-height: 1.45; }
 .peggy-report-bottom-line { border-bottom: 0; }
+.peggy-report-source {
+  padding: 2px 0 20px;
+}
 .peggy-report-footer {
   align-items: center;
   background: rgba(255, 247, 236, 0.82);

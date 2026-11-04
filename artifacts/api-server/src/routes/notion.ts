@@ -61,6 +61,30 @@ function prop(page: any, key: string) {
   }
 }
 
+async function fetchReportBlocks(connectors: ConnectorClient, pageId: string) {
+  const allBlocks: any[] = [];
+  let cursor: string | undefined;
+  do {
+    const query = new URLSearchParams({ page_size: "100" });
+    if (cursor) query.set("start_cursor", cursor);
+    const response = await connectors.proxy("notion", `/v1/blocks/${pageId}/children?${query.toString()}`);
+    const data: any = await response.json();
+    if (data?.object === "error") throw new Error(data.message || "Could not read the Notion report");
+    allBlocks.push(...(data.results ?? []));
+    cursor = data.has_more ? data.next_cursor : undefined;
+  } while (cursor);
+
+  return allBlocks.flatMap((block: any) => {
+    const payload = block?.[block.type];
+    const text = payload?.rich_text?.map((item: any) => item.plain_text).join("").trim();
+    if (!text) return [];
+    if (["heading_1", "heading_2", "heading_3"].includes(block.type)) return [{ type: "heading", text }];
+    if (["bulleted_list_item", "numbered_list_item", "to_do"].includes(block.type)) return [{ type: "list-item", text }];
+    if (["paragraph", "quote", "callout"].includes(block.type)) return [{ type: "paragraph", text }];
+    return [];
+  });
+}
+
 function textProp(value: string) {
   return { rich_text: [{ type: "text", text: { content: value.slice(0, 2000) } }] };
 }
@@ -337,6 +361,7 @@ router.get("/day-summary", async (req: Request, res: Response) => {
         date: String(prop(page, "Date") || page.created_time || ""),
         createdAt: String(page.created_time || page.last_edited_time || ""),
         url: String(page.url || `https://notion.so/${String(page.id).replace(/-/g, "")}`),
+        blocks: [] as { type: string; text: string }[],
       }))
       .sort((a: any, b: any) => b.createdAt.localeCompare(a.createdAt));
 
@@ -344,6 +369,15 @@ router.get("/day-summary", async (req: Request, res: Response) => {
       reports.find((report: any) => report.agent === "Peggy" && /morning/i.test(report.type)) ||
       reports.find((report: any) => report.agent === "Peggy") ||
       reports[0];
+
+    const latestPeggyReport = reports.find((report: any) => report.agent === "Peggy");
+    if (latestPeggyReport) {
+      try {
+        latestPeggyReport.blocks = await fetchReportBlocks(connectors, latestPeggyReport.id);
+      } catch {
+        latestPeggyReport.blocks = [];
+      }
+    }
 
     return res.json({
       date,
