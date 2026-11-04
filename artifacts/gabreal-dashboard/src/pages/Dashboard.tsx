@@ -591,6 +591,7 @@ type CommItem = {
   email?: string;
   sourceUrl?: string;
   action: string;
+  createdAt?: string;
   relativeTime: string;
 };
 
@@ -1053,8 +1054,22 @@ function HomeView() {
                        : visible;
 
         const urgencyRank: Record<string, number> = { URGENT: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+        const freshnessBucket = (item: CommItem) => {
+          const timestamp = Date.parse(item.createdAt ?? "");
+          if (!Number.isFinite(timestamp)) return 2;
+          const ageDays = Math.max(0, (Date.now() - timestamp) / 86_400_000);
+          if (ageDays <= 2) return 0;
+          if (ageDays <= 7) return 1;
+          return 2;
+        };
         const displayed = [...filtered]
-          .sort((a, b) => (urgencyRank[a.priority] ?? 4) - (urgencyRank[b.priority] ?? 4))
+          .sort((a, b) => {
+            const freshnessDiff = freshnessBucket(a) - freshnessBucket(b);
+            if (freshnessDiff !== 0) return freshnessDiff;
+            const urgencyDiff = (urgencyRank[a.priority] ?? 4) - (urgencyRank[b.priority] ?? 4);
+            if (urgencyDiff !== 0) return urgencyDiff;
+            return (Date.parse(b.createdAt ?? "") || 0) - (Date.parse(a.createdAt ?? "") || 0);
+          })
           .slice(0, 6);
 
         function priorityBadgeClass(p: string) {
@@ -1173,7 +1188,7 @@ function HomeView() {
             )}
             {filtered.length > displayed.length && (
               <div style={{ marginTop: 14, fontSize: 12, color: "var(--text-xsoft)", fontFamily: "Inter, sans-serif" }}>
-                Showing the {displayed.length} most urgent of {filtered.length}. Use the filters above or open the full queue in Notion.
+                Showing the {displayed.length} most current and urgent of {filtered.length}. Use the filters above or open the full queue in Notion.
               </div>
             )}
           </div>

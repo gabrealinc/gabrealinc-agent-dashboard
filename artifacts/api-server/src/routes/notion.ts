@@ -597,6 +597,7 @@ router.get("/comms", async (req: Request, res: Response) => {
           prop(page, "Draft Reply") || prop(page, "Draft") || prop(page, "Reply") || "",
         action:
           prop(page, "Type") || prop(page, "Action") || prop(page, "Action Type") || prop(page, "Next Step") || "",
+        createdAt: dateRaw,
         relativeTime: commsRelativeTime(dateRaw),
       };
     }).filter(Boolean);
