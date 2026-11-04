@@ -356,6 +356,143 @@ body {
   align-items: center;
   gap: 12px;
 }
+.day-summary-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin-bottom: 12px;
+}
+.day-summary-stat {
+  background: rgba(255, 248, 238, 0.72);
+  border: 1px solid rgba(215, 190, 165, 0.48);
+  border-radius: 10px;
+  padding: 9px 8px 8px;
+  text-align: center;
+}
+.day-summary-stat strong,
+.day-summary-stat span {
+  display: block;
+}
+.day-summary-stat strong {
+  color: var(--text);
+  font-family: 'Playfair Display', serif;
+  font-size: 20px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.day-summary-stat span {
+  color: var(--text-xsoft);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.day-summary-focus {
+  background: rgba(248, 223, 195, 0.45);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 10px 10px 0;
+  margin-bottom: 13px;
+  padding: 10px 12px;
+}
+.day-summary-focus span {
+  color: var(--accent-dark);
+  display: block;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+.day-summary-focus p {
+  color: var(--text);
+  display: -webkit-box;
+  font-size: 11px;
+  font-weight: 560;
+  line-height: 1.45;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+.day-summary-reports-heading {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 3px;
+}
+.day-summary-reports-heading span {
+  color: var(--text-soft);
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.day-summary-reports-heading small {
+  color: var(--text-xsoft);
+  font-size: 9px;
+}
+.day-summary-reports {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-color: rgba(180,130,100,0.25) transparent;
+  scrollbar-width: thin;
+}
+.day-summary-report {
+  align-items: center;
+  border-bottom: 1px solid rgba(215, 190, 165, 0.42);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  padding: 8px 2px;
+  text-decoration: none;
+}
+.day-summary-report:hover .day-summary-report-copy strong {
+  color: var(--accent-dark);
+}
+.day-summary-agent-mark {
+  align-items: center;
+  background: rgba(201, 105, 29, 0.12);
+  border: 1px solid rgba(201, 105, 29, 0.16);
+  border-radius: 50%;
+  color: var(--accent-dark);
+  display: inline-flex;
+  font-family: 'Playfair Display', serif;
+  font-size: 12px;
+  font-weight: 700;
+  height: 26px;
+  justify-content: center;
+  width: 26px;
+}
+.day-summary-report-copy {
+  min-width: 0;
+}
+.day-summary-report-copy strong,
+.day-summary-report-copy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.day-summary-report-copy strong {
+  color: var(--text);
+  font-size: 11px;
+  margin-bottom: 2px;
+}
+.day-summary-report-copy small,
+.day-summary-report time {
+  color: var(--text-xsoft);
+  font-size: 9px;
+}
+.day-summary-report time {
+  white-space: nowrap;
+}
+.day-summary-empty {
+  color: var(--text-xsoft);
+  font-size: 11px;
+  line-height: 1.55;
+  padding: 12px 2px;
+}
 .daily-report-actions {
   align-items: center;
   display: flex;

@@ -18,6 +18,10 @@ function formatDate() {
 function formatTime() {
   return new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
+function formatReportTime(isoString: string) {
+  if (!isoString) return "";
+  return new Date(isoString).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+}
 function isoDate(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
@@ -587,6 +591,25 @@ type CommItem = {
 
 type CommAction = "save_draft" | "ready_to_send" | "done" | "file" | "dismiss" | "delete";
 
+type DayReport = {
+  id: string;
+  agent: string;
+  title: string;
+  type: string;
+  status: string;
+  summary: string;
+  date: string;
+  createdAt: string;
+  url: string;
+};
+
+type DaySummary = {
+  date: string;
+  reports: DayReport[];
+  focus: string;
+  updatedAt: string;
+};
+
 const COMMS_MOCK: CommItem[] = [
   {
     id: "snapshot-scheduler-reliability",
@@ -599,17 +622,63 @@ const COMMS_MOCK: CommItem[] = [
 ];
 
 // ─── View: HOME ───────────────────────────────────────────────────────────────
-function DailyReportCard({ fullPage = false, onOpenFullReport }: { fullPage?: boolean; onOpenFullReport?: () => void }) {
+function DailyReportCard({
+  meetingCount,
+  taskCount,
+  reports,
+  focus,
+  loading,
+  onRefresh,
+}: {
+  meetingCount: number;
+  taskCount: number;
+  reports: DayReport[];
+  focus: string;
+  loading: boolean;
+  onRefresh: () => void;
+}) {
   return (
-    <div className={`card daily-report-card${fullPage ? " daily-report-card-full" : ""}`}>
+    <div className="card daily-report-card">
       <div className="card-header daily-report-card-header">
         <div>
-          <div className="card-label">Peggy's Latest Report</div>
-          <div className="card-subtitle" style={{ marginBottom: 0 }}>Peggy · Evening Closeout · Oct 19 · Complete</div>
+          <div className="card-label">Today</div>
+          <div className="card-subtitle" style={{ marginBottom: 0 }}>
+            {loading ? "Checking your day…" : "Live · refreshes every minute"}
+          </div>
         </div>
-        {onOpenFullReport && (
-          <button className="daily-report-full" type="button" onClick={onOpenFullReport}>Read full report</button>
+        <RefreshBtn onClick={onRefresh} />
+      </div>
+
+      <div className="day-summary-stats" aria-label="Today's totals">
+        <div className="day-summary-stat"><strong>{meetingCount}</strong><span>{meetingCount === 1 ? "meeting" : "meetings"}</span></div>
+        <div className="day-summary-stat"><strong>{taskCount}</strong><span>active tasks</span></div>
+        <div className="day-summary-stat"><strong>{reports.length}</strong><span>{reports.length === 1 ? "agent report" : "agent reports"}</span></div>
+      </div>
+
+      <div className="day-summary-focus">
+        <span>Today is successful if</span>
+        <p>{focus || "You protect your attention and move the most important work forward."}</p>
+      </div>
+
+      <div className="day-summary-reports-heading">
+        <span>Agent reports today</span>
+        {!loading && reports.length > 0 && <small>Newest first</small>}
+      </div>
+      <div className="day-summary-reports" aria-live="polite">
+        {loading && reports.length === 0 && <div className="day-summary-empty">Loading today's reports…</div>}
+        {!loading && reports.length === 0 && (
+          <div className="day-summary-empty">No agent reports have landed yet today. They will appear here automatically.</div>
         )}
+        {reports.map(report => (
+          <a className="day-summary-report" href={report.url} target="_blank" rel="noopener noreferrer" key={report.id}>
+            <span className="day-summary-agent-mark" aria-hidden="true">{report.agent.slice(0, 1).toUpperCase()}</span>
+            <span className="day-summary-report-copy">
+              <strong>{report.agent}</strong>
+              <small>{report.type}{report.status ? ` · ${report.status}` : ""}</small>
+            </span>
+            <time dateTime={report.createdAt}>{formatReportTime(report.createdAt)}</time>
+          </a>
+        ))}
       </div>
     </div>
   );
@@ -618,11 +687,11 @@ function DailyReportCard({ fullPage = false, onOpenFullReport }: { fullPage?: bo
 function HomeView() {
   const [calOpen, setCalOpen] = useState(false);
   const closeCalendar = useCallback(() => setCalOpen(false), []);
-  const [agentQuickView, setAgentQuickView] = useState<Agent | null>(() =>
-    AGENTS.find(agent => agent.name === "Peggy") ?? null
-  );
-  const [schedule, setSchedule] = useState<{ time: string; event: string }[]>(SCHEDULE_FALLBACK);
+  const [agentQuickView, setAgentQuickView] = useState<Agent | null>(null);
+  const [schedule, setSchedule] = useState<{ time: string; event: string; isAllDay?: boolean }[]>(SCHEDULE_FALLBACK);
   const [scheduleLoading, setScheduleLoading] = useState(true);
+  const [daySummary, setDaySummary] = useState<DaySummary>({ date: isoDate(new Date()), reports: [], focus: "", updatedAt: "" });
+  const [daySummaryLoading, setDaySummaryLoading] = useState(true);
   const [comms, setComms] = useState<CommItem[]>(COMMS_MOCK);
   const [commsLoading, setCommsLoading] = useState(true);
   const [commsFromNotion, setCommsFromNotion] = useState(false);
@@ -662,9 +731,9 @@ function HomeView() {
   async function loadSchedule() {
     setScheduleLoading(true);
     try {
-      const data = await apiFetch<{ events: { timeDisplay: string; title: string }[] }>("/gcal/events?days=1");
+      const data = await apiFetch<{ events: { timeDisplay: string; title: string; isAllDay?: boolean }[] }>("/gcal/events?days=1");
       if (data.events?.length) {
-        setSchedule(data.events.map(e => ({ time: e.timeDisplay, event: e.title })));
+        setSchedule(data.events.map(e => ({ time: e.timeDisplay, event: e.title, isAllDay: e.isAllDay })));
       } else {
         setSchedule([]);
       }
@@ -672,6 +741,18 @@ function HomeView() {
       setSchedule([]);
     } finally {
       setScheduleLoading(false);
+    }
+  }
+
+  async function loadDaySummary(silent = false) {
+    if (!silent) setDaySummaryLoading(true);
+    try {
+      const data = await apiFetch<DaySummary>(`/notion/day-summary?date=${isoDate(new Date())}`);
+      setDaySummary(data);
+    } catch {
+      // Keep the most recently loaded reports visible during a brief outage.
+    } finally {
+      setDaySummaryLoading(false);
     }
   }
 
@@ -751,7 +832,25 @@ function HomeView() {
     }
   }
 
-  useEffect(() => { loadSchedule(); loadComms(); loadTasks(); }, []);
+  useEffect(() => {
+    loadSchedule();
+    loadComms();
+    loadTasks();
+    loadDaySummary();
+    const interval = window.setInterval(() => loadDaySummary(true), 60_000);
+    const refreshOnFocus = () => loadDaySummary(true);
+    window.addEventListener("focus", refreshOnFocus);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshOnFocus);
+    };
+  }, []);
+
+  const activeTaskCount = tasks.filter(task => isActiveTaskStatus(task.status)).length;
+  const meetingCount = schedule.filter(item => !item.isAllDay).length;
+  const dayFocus = daySummary.focus || (tasks[0]
+    ? `You move “${tasks[0].name}” forward without making the day bigger.`
+    : "You protect your attention and move the most important work forward.");
 
   return (
     <div>
@@ -760,7 +859,14 @@ function HomeView() {
       </div>
 
       <div className="home-grid home-grid-three" style={{ alignItems: "stretch" }}>
-        <DailyReportCard onOpenFullReport={() => setAgentQuickView(AGENTS.find(agent => agent.name === "Peggy") ?? AGENTS[0])} />
+        <DailyReportCard
+          meetingCount={meetingCount}
+          taskCount={activeTaskCount}
+          reports={daySummary.reports}
+          focus={dayFocus}
+          loading={daySummaryLoading}
+          onRefresh={() => loadDaySummary()}
+        />
 
         {/* Calendar */}
         <div>

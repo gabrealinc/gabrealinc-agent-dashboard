@@ -6,6 +6,7 @@ const router = Router();
 // Known Notion DB IDs (non-sensitive identifiers, safe to hardcode as fallbacks)
 const DEFAULT_TASKS_DB   = process.env.NOTION_TASKS_DB_ID   ?? "222a4fa7-7eaf-812b-8707-d4f1da02d778";
 const DEFAULT_CLIENTS_DB = process.env.NOTION_CLIENTS_DB_ID ?? "";
+const DEFAULT_REPORTS_DB = process.env.NOTION_REPORTS_DB_ID ?? "c71fd2fe-51a8-42fb-a983-7b08581c0429";
 
 function getConnectors() {
   return new DashboardConnectors();
@@ -287,6 +288,69 @@ router.get("/tasks", async (req: Request, res: Response) => {
 
 
     return res.json({ tasks, notionDbUrl: dbUrl });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── GET /api/notion/day-summary?date=YYYY-MM-DD ────────────────────────────
+// Returns every agent report recorded for the requested day, newest first.
+router.get("/day-summary", async (req: Request, res: Response) => {
+  const date = String(req.query.date || "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return res.status(400).json({ error: "A valid date is required." });
+  }
+
+  try {
+    const connectors = getConnectors();
+    const dbId = process.env.NOTION_REPORTS_DB_ID || DEFAULT_REPORTS_DB;
+    let results: any[] = [];
+
+    try {
+      const data = await queryDb(connectors, dbId, {
+        filter: { property: "Date", date: { equals: date } },
+        sorts: [{ timestamp: "created_time", direction: "descending" }],
+        page_size: 100,
+      });
+      results = data.results ?? [];
+    } catch {
+      // Some older database versions reject property filters. Fetching the
+      // newest pages and filtering locally keeps the dashboard useful.
+      const data = await queryDb(connectors, dbId, {
+        sorts: [{ timestamp: "created_time", direction: "descending" }],
+        page_size: 100,
+      });
+      results = (data.results ?? []).filter((page: any) =>
+        String(prop(page, "Date") || page.created_time || "").slice(0, 10) === date
+      );
+    }
+
+    const reports = results
+      .filter((page: any) => !page.archived && !page.in_trash)
+      .map((page: any) => ({
+        id: page.id,
+        agent: String(prop(page, "Prepared By") || "Agent"),
+        title: String(prop(page, "Report") || "Untitled report"),
+        type: String(prop(page, "Type") || "Report"),
+        status: String(prop(page, "Status") || ""),
+        summary: String(prop(page, "Summary") || ""),
+        date: String(prop(page, "Date") || page.created_time || ""),
+        createdAt: String(page.created_time || page.last_edited_time || ""),
+        url: String(page.url || `https://notion.so/${String(page.id).replace(/-/g, "")}`),
+      }))
+      .sort((a: any, b: any) => b.createdAt.localeCompare(a.createdAt));
+
+    const focusReport =
+      reports.find((report: any) => report.agent === "Peggy" && /morning/i.test(report.type)) ||
+      reports.find((report: any) => report.agent === "Peggy") ||
+      reports[0];
+
+    return res.json({
+      date,
+      reports,
+      focus: focusReport?.summary || "",
+      updatedAt: new Date().toISOString(),
+    });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }
