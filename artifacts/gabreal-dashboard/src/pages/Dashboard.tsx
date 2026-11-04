@@ -610,6 +610,27 @@ type DaySummary = {
   updatedAt: string;
 };
 
+const VERIFIED_DAY_SUMMARY_SNAPSHOT: DaySummary = {
+  date: "2026-11-03",
+  focus: "Keep the day humane, use the writing hour well, enforce Midnight’s payment boundary, and move only the highest-value client and Module 2 work.",
+  updatedAt: "2026-11-04T01:03:54Z",
+  reports: [
+    { id: "40ea4fa7-7eaf-8186-b7c0-e21ee5a9d31e", agent: "Peggy", title: "Peggy - Evening Executive Closeout - 3 November 2026 (PT)", type: "Evening Brief", status: "Complete", summary: "Gab Real's three-path offer model is now approved and documented. Luxx changes are committed but not live, Midnight remains unpaid, and today's From Scratch and Carol sessions produced bounded next steps without authorizing new scope.", date: "2026-11-03", createdAt: "2026-11-04T01:03:54Z", url: "https://app.notion.com/40ea4fa77eaf8186b7c0e21ee5a9d31e" },
+    { id: "40da4fa7-7eaf-819c-a312-c46239dc2e6d", agent: "Milton", title: "Milton - Daily Log - 3 November 2026 (PT)", type: "Daily Work Log", status: "Complete", summary: "November 3: both new Fireflies business meetings enriched and Reviewed; Carol scope/payment decision and Canva identity correction logged; one IngramSpark Task/approval proposed; required writes verified.", date: "2026-11-03", createdAt: "2026-11-03T23:30:48Z", url: "https://app.notion.com/40da4fa77eaf819ca312c46239dc2e6d" },
+    { id: "40da4fa7-7eaf-8196-8774-f5a7df24ed9d", agent: "Elle", title: "Elle - Daily Alignment - 3 November 2026 (PT)", type: "Daily Alignment", status: "Complete", summary: "Today: use the 11 a.m. PT From Scratch writing hour, verify Midnight's $1,125 payment before another session, and leave space to recover after yesterday's ALS appointment and Manny's vet emergency.", date: "2026-11-03", createdAt: "2026-11-03T15:38:48Z", url: "https://app.notion.com/40da4fa77eaf81968774f5a7df24ed9d" },
+    { id: "40da4fa7-7eaf-81cd-b5a5-fb956c5ab5aa", agent: "Peggy", title: "Morning Executive Brief - November 3, 2026", type: "Morning Brief", status: "Complete", summary: "Keep the day humane, use the writing hour well, enforce Midnight’s payment boundary, and move only the highest-value client and Module 2 work.", date: "2026-11-03", createdAt: "2026-11-03T15:02:47Z", url: "https://app.notion.com/40da4fa77eaf81cdb5a5fb956c5ab5aa" },
+    { id: "40da4fa7-7eaf-81fb-910a-c1b4a1df5e21", agent: "Amber", title: "Amber - 2026-11-03 06:36 PT", type: "Email Management", status: "Complete", summary: "Four runs today. The latest run added one Needs Attention item, updated Carol LaRosh's Canva item, and filed five routine threads.", date: "2026-11-03", createdAt: "2026-11-03T14:42:22Z", url: "https://app.notion.com/40da4fa77eaf81fb910ac1b4a1df5e21" },
+    { id: "40da4fa7-7eaf-81e6-a5f0-c85501b5dada", agent: "Nancy", title: "Nancy - Research Intelligence - November 3, 2026", type: "Research Intelligence", status: "Complete", summary: "AI-assisted transactions and conversational ads are changing how people are influenced; new evidence highlights disclosure of persuasive intent, while Election Day and Ukraine power attacks warrant attention.", date: "2026-11-03", createdAt: "2026-11-03T13:02:45Z", url: "https://app.notion.com/40da4fa77eaf81e6a5f0c85501b5dada" },
+  ],
+};
+
+function daySummarySnapshot(): DaySummary {
+  const today = isoDate(new Date());
+  return today === VERIFIED_DAY_SUMMARY_SNAPSHOT.date
+    ? VERIFIED_DAY_SUMMARY_SNAPSHOT
+    : { date: today, reports: [], focus: "", updatedAt: "" };
+}
+
 const COMMS_MOCK: CommItem[] = [
   {
     id: "snapshot-scheduler-reliability",
@@ -628,6 +649,7 @@ function DailyReportCard({
   reports,
   focus,
   loading,
+  live,
   onRefresh,
 }: {
   meetingCount: number;
@@ -635,6 +657,7 @@ function DailyReportCard({
   reports: DayReport[];
   focus: string;
   loading: boolean;
+  live: boolean;
   onRefresh: () => void;
 }) {
   return (
@@ -643,7 +666,7 @@ function DailyReportCard({
         <div>
           <div className="card-label">Today</div>
           <div className="card-subtitle" style={{ marginBottom: 0 }}>
-            {loading ? "Checking your day…" : "Live · refreshes every minute"}
+            {loading ? "Checking your day…" : live ? "Live · refreshes every minute" : "Latest verified Notion snapshot · live sync paused"}
           </div>
         </div>
         <RefreshBtn onClick={onRefresh} />
@@ -690,8 +713,9 @@ function HomeView() {
   const [agentQuickView, setAgentQuickView] = useState<Agent | null>(null);
   const [schedule, setSchedule] = useState<{ time: string; event: string; isAllDay?: boolean }[]>(SCHEDULE_FALLBACK);
   const [scheduleLoading, setScheduleLoading] = useState(true);
-  const [daySummary, setDaySummary] = useState<DaySummary>({ date: isoDate(new Date()), reports: [], focus: "", updatedAt: "" });
+  const [daySummary, setDaySummary] = useState<DaySummary>(() => daySummarySnapshot());
   const [daySummaryLoading, setDaySummaryLoading] = useState(true);
+  const [daySummaryLive, setDaySummaryLive] = useState(false);
   const [comms, setComms] = useState<CommItem[]>(COMMS_MOCK);
   const [commsLoading, setCommsLoading] = useState(true);
   const [commsFromNotion, setCommsFromNotion] = useState(false);
@@ -749,8 +773,10 @@ function HomeView() {
     try {
       const data = await apiFetch<DaySummary>(`/notion/day-summary?date=${isoDate(new Date())}`);
       setDaySummary(data);
+      setDaySummaryLive(true);
     } catch {
       // Keep the most recently loaded reports visible during a brief outage.
+      setDaySummaryLive(false);
     } finally {
       setDaySummaryLoading(false);
     }
@@ -865,6 +891,7 @@ function HomeView() {
           reports={daySummary.reports}
           focus={dayFocus}
           loading={daySummaryLoading}
+          live={daySummaryLive}
           onRefresh={() => loadDaySummary()}
         />
 
