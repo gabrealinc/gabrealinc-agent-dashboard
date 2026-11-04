@@ -6,7 +6,7 @@ const router = Router();
 // Known Notion DB IDs (non-sensitive identifiers, safe to hardcode as fallbacks)
 const DEFAULT_TASKS_DB   = process.env.NOTION_TASKS_DB_ID   ?? "222a4fa7-7eaf-812b-8707-d4f1da02d778";
 const DEFAULT_CLIENTS_DB = process.env.NOTION_CLIENTS_DB_ID ?? "";
-const DEFAULT_REPORTS_DB = process.env.NOTION_REPORTS_DB_ID ?? "c71fd2fe-51a8-42fb-a983-7b08581c0429";
+const DEFAULT_REPORTS_DB = process.env.NOTION_REPORTS_DB_ID ?? "4a6cbdad-e026-440b-9033-e4b77073ef4e";
 
 function getConnectors() {
   return new DashboardConnectors();
@@ -244,7 +244,6 @@ router.get("/tasks", async (req: Request, res: Response) => {
     ]);
 
     // Normalize Notion status names to dashboard-standard values.
-    // Only Done/Archived are blocked — everything else passes through.
     function normalizeStatus(raw: string): string {
       const s = raw.toLowerCase().trim();
       if (/\b(done|complet\w*|finish\w*|closed?)\b/.test(s)) return "Done";
@@ -257,8 +256,16 @@ router.get("/tasks", async (req: Request, res: Response) => {
       return raw; // pass through any custom status name as-is
     }
 
-    // Blocklist: only exclude Done and Archived — anything else (including custom names) is shown
-    const BLOCKED_STATUSES = new Set(["Done", "Archived"]);
+    // The home screen is a working-priorities view, not the entire Tasks database.
+    // Ideas, proposals, recurring work, denied work, and review-complete work remain
+    // available in Notion but should not crowd the dashboard.
+    const DASHBOARD_STATUSES = new Set([
+      "To Do",
+      "On Deck",
+      "In Progress",
+      "Gabby Review",
+      "Client In Progress",
+    ]);
     const tasks = allPages.map((page: any, i: number) => {
       // Hard rule 1: skip pages Notion has archived or trashed
       if (page.archived || page.in_trash) return null;
@@ -266,8 +273,8 @@ router.get("/tasks", async (req: Request, res: Response) => {
       const rawStatus = prop(page, "Status") || prop(page, "Stage") || prop(page, "State") || "";
       const status = normalizeStatus(String(rawStatus));
 
-      // Hard rule 2: block Done/Archived — everything else is active
-      if (BLOCKED_STATUSES.has(status)) return null;
+      // Hard rule 2: show only work that can currently move on the dashboard.
+      if (!DASHBOARD_STATUSES.has(status)) return null;
 
       const clientName = (
         prop(page, "Client Name") || prop(page, "Client") || prop(page, "Project Name") ||
@@ -303,12 +310,24 @@ router.get("/tasks", async (req: Request, res: Response) => {
         date: dateDisplay,
         sortDate: (dueRaw || "9999-12-31").slice(0, 10),
         status,
+        priority: String(prop(page, "Priority") || ""),
+        owner: String(prop(page, "Owner") || ""),
+        blocked: Boolean(prop(page, "Blocked")),
+        waitingOn: String(prop(page, "Waiting On") || ""),
+        type: String(prop(page, "Type") || ""),
         client: clientName,
         notes: prop(page, "Notes") || prop(page, "Description") || prop(page, "Details") || "",
         notionUrl: page.url,
         parentId: parentId ?? null,
       };
-    }).filter(Boolean);
+    }).filter(Boolean).sort((a: any, b: any) => {
+      const priorityRank: Record<string, number> = { Highest: 0, High: 1, Medium: 2, Low: 3 };
+      const priorityDiff = (priorityRank[a.priority] ?? 4) - (priorityRank[b.priority] ?? 4);
+      if (priorityDiff !== 0) return priorityDiff;
+      const dateDiff = String(a.sortDate).localeCompare(String(b.sortDate));
+      if (dateDiff !== 0) return dateDiff;
+      return String(a.name).localeCompare(String(b.name));
+    });
 
 
     return res.json({ tasks, notionDbUrl: dbUrl });
@@ -365,10 +384,7 @@ router.get("/day-summary", async (req: Request, res: Response) => {
       }))
       .sort((a: any, b: any) => b.createdAt.localeCompare(a.createdAt));
 
-    const focusReport =
-      reports.find((report: any) => report.agent === "Peggy" && /morning/i.test(report.type)) ||
-      reports.find((report: any) => report.agent === "Peggy") ||
-      reports[0];
+    const focusReport = reports.find((report: any) => report.agent === "Peggy") || reports[0];
 
     const latestPeggyReport = reports.find((report: any) => report.agent === "Peggy");
     if (latestPeggyReport) {
@@ -559,7 +575,7 @@ router.get("/comms", async (req: Request, res: Response) => {
         id: page.id,
         notionUrl: page.url,
         summary:
-          prop(page, "Name") || prop(page, "Subject") || prop(page, "Summary") ||
+          prop(page, "Item") || prop(page, "Name") || prop(page, "Subject") || prop(page, "Summary") ||
           prop(page, "Title") || "(untitled)",
         priority: priority.toUpperCase(),
         source:
@@ -575,12 +591,12 @@ router.get("/comms", async (req: Request, res: Response) => {
           prop(page, "Person") || "",
         status,
         context:
-          prop(page, "Context") || prop(page, "Why") || prop(page, "Notes") ||
+          prop(page, "Recommended Action") || prop(page, "Context") || prop(page, "Why") || prop(page, "Notes") ||
           prop(page, "Description") || prop(page, "Details") || "",
         draftReply:
           prop(page, "Draft Reply") || prop(page, "Draft") || prop(page, "Reply") || "",
         action:
-          prop(page, "Action") || prop(page, "Action Type") || prop(page, "Next Step") || "",
+          prop(page, "Type") || prop(page, "Action") || prop(page, "Action Type") || prop(page, "Next Step") || "",
         relativeTime: commsRelativeTime(dateRaw),
       };
     }).filter(Boolean);

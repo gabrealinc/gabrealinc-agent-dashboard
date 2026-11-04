@@ -74,6 +74,11 @@ type Task = {
   date: string;       // display string e.g. "Jun 4"
   sortDate: string;   // ISO "2026-06-04" for sorting
   status: string;
+  priority?: string;
+  owner?: string;
+  blocked?: boolean;
+  waitingOn?: string;
+  type?: string;
   client: string;
   notes: string;
   notionUrl?: string;
@@ -330,11 +335,11 @@ function InvoiceStatus({ s }: { s: string }) {
 }
 
 // ─── Priorities panel ─────────────────────────────────────────────────────────
-const TASK_STATUS_OPTIONS = ["On Deck", "To Do", "In Progress", "On Hold", "Done"] as const;
-const DONE_STATUSES = new Set(["done", "complete", "completed", "resolved", "closed", "archived", "dismissed", "filed"]);
+const TASK_STATUS_OPTIONS = ["On Deck", "To Do", "In Progress", "Gabby Review", "Client In Progress", "Client Reviewing", "Done"] as const;
+const DASHBOARD_TASK_STATUSES = new Set(["on deck", "to do", "in progress", "gabby review", "client in progress"]);
 
 function isActiveTaskStatus(status: string) {
-  return !DONE_STATUSES.has(status.toLowerCase().trim());
+  return DASHBOARD_TASK_STATUSES.has(status.toLowerCase().trim());
 }
 
 function pillClass(status: string) {
@@ -375,7 +380,7 @@ function PrioritiesPanel({ tasks = [], setTasks, loading, liveSync }: {
       roots.push(t);
     }
   }
-  const visible = roots.slice(0, 7).map(t => ({ ...t, subtasks: childrenMap.get(t.notionId) ?? [] }));
+  const visible = roots.slice(0, 5).map(t => ({ ...t, subtasks: childrenMap.get(t.notionId) ?? [] }));
 
   async function patchNotion(task: Task, body: object) {
     if (!task.notionId || task.notionId.startsWith("task-")) return;
@@ -718,7 +723,7 @@ function DailyReportCard({
         <div>
           <div className="card-label">Today</div>
           <div className="card-subtitle" style={{ marginBottom: 0 }}>
-            {loading ? "Checking your day…" : live ? "Live · refreshes every minute" : "Latest verified Notion snapshot · live sync paused"}
+            {loading ? "Checking your day…" : live ? "Live · refreshes every minute" : "Notion live sync unavailable"}
           </div>
         </div>
         <div className="daily-report-actions">
@@ -730,8 +735,8 @@ function DailyReportCard({
       </div>
 
       <div className="day-summary-stats" aria-label="Today's totals">
-        <div className="day-summary-stat"><strong>{meetingCount}</strong><span>{meetingCount === 1 ? "meeting" : "meetings"}</span></div>
-        <div className="day-summary-stat"><strong>{taskCount}</strong><span>active tasks</span></div>
+        <div className="day-summary-stat"><strong>{meetingCount}</strong><span>{meetingCount === 1 ? "calendar event" : "calendar events"}</span></div>
+        <div className="day-summary-stat"><strong>{taskCount}</strong><span>{taskCount === 1 ? "current priority" : "current priorities"}</span></div>
         <div className="day-summary-stat"><strong>{reports.length}</strong><span>{reports.length === 1 ? "agent report" : "agent reports"}</span></div>
       </div>
 
@@ -770,11 +775,11 @@ function HomeView() {
   const [agentQuickView, setAgentQuickView] = useState<Agent | null>(null);
   const [schedule, setSchedule] = useState<{ time: string; event: string; isAllDay?: boolean }[]>(SCHEDULE_FALLBACK);
   const [scheduleLoading, setScheduleLoading] = useState(true);
-  const [daySummary, setDaySummary] = useState<DaySummary>(() => daySummarySnapshot());
+  const [daySummary, setDaySummary] = useState<DaySummary>(() => ({ date: isoDate(new Date()), reports: [], focus: "", updatedAt: "" }));
   const [daySummaryLoading, setDaySummaryLoading] = useState(true);
   const [daySummaryLive, setDaySummaryLive] = useState(false);
   const [peggyReportOpen, setPeggyReportOpen] = useState(false);
-  const [comms, setComms] = useState<CommItem[]>(COMMS_MOCK);
+  const [comms, setComms] = useState<CommItem[]>([]);
   const [commsLoading, setCommsLoading] = useState(true);
   const [commsFromNotion, setCommsFromNotion] = useState(false);
   const [commsError, setCommsError] = useState("");
@@ -786,7 +791,7 @@ function HomeView() {
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
   // ── Tasks (shared by PrioritiesPanel and QuickStats) ──────────────────────
-  const [tasks, setTasks] = useState<Task[]>([...TASKS_SEED]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [tasksLoading, setTasksLoading] = useState(true);
   const [tasksError, setTasksError] = useState("");
   const [tasksNotionDbUrl, setTasksNotionDbUrl] = useState(TASKS_NOTION_URL);
@@ -798,12 +803,11 @@ function HomeView() {
     try {
       const data = await apiFetch<{ tasks: Task[]; notionDbUrl?: string }>("/notion/tasks");
       // Always replace with Notion data (empty = nothing active, show empty state)
-      setTasks((data.tasks ?? []).sort((a, b) => a.sortDate.localeCompare(b.sortDate)));
+      setTasks(data.tasks ?? []);
       if (data.notionDbUrl) setTasksNotionDbUrl(data.notionDbUrl);
       setTasksLiveSync(true);
     } catch {
-      // Keep the latest verified Notion snapshot visible when live sync is unavailable.
-      setTasksError("");
+      setTasksError("Notion is temporarily unavailable. No older task list is being substituted.");
       setTasksLiveSync(false);
     } finally {
       setTasksLoading(false);
@@ -849,8 +853,7 @@ function HomeView() {
       setComms(data.items ?? []);
       setCommsFromNotion(true);
     } catch {
-      // Keep the saved attention items available until Notion is reconnected.
-      setCommsError("");
+      setCommsError("Notion is temporarily unavailable. No older attention list is being substituted.");
     } finally {
       setCommsLoading(false);
     }
@@ -1022,8 +1025,8 @@ function HomeView() {
                   {tasksLoading
                     ? "checking Notion…"
                     : tasksLiveSync
-                      ? `${tasks.filter(t => isActiveTaskStatus(t.status)).length} active · live from Notion`
-                      : `${tasks.filter(t => isActiveTaskStatus(t.status)).length} priorities · latest Notion snapshot`}
+                      ? `${tasks.filter(t => isActiveTaskStatus(t.status)).length} current priorities · live from Notion`
+                      : "Notion live sync unavailable"}
                 </div>
               </div>
               <RefreshBtn onClick={loadTasks} />
@@ -1042,12 +1045,17 @@ function HomeView() {
       {(() => {
         const visible = comms.filter(c => !dismissed.has(c.id));
         const urgent  = visible.filter(c => ["HIGH","URGENT"].includes(c.priority));
-        const action  = visible.filter(c => ["TASK","ACTION","APPROVE"].includes(c.priority) && !["HIGH","URGENT"].includes(c.priority));
-        const fyi     = visible.filter(c => c.priority === "FYI");
+        const action  = visible.filter(c => ["REPLY","APPROVE","DECIDE","CLARIFY","RESOLVE"].includes(c.action.toUpperCase()));
+        const fyi     = visible.filter(c => c.priority === "LOW");
         const filtered = commsFilter === "urgent" ? urgent
                        : commsFilter === "action" ? action
                        : commsFilter === "fyi"    ? fyi
                        : visible;
+
+        const urgencyRank: Record<string, number> = { URGENT: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+        const displayed = [...filtered]
+          .sort((a, b) => (urgencyRank[a.priority] ?? 4) - (urgencyRank[b.priority] ?? 4))
+          .slice(0, 6);
 
         function priorityBadgeClass(p: string) {
           if (["HIGH","URGENT"].includes(p)) return "badge badge-high";
@@ -1094,7 +1102,7 @@ function HomeView() {
               </div>
             ) : (
               <div className="attention-grid">
-                {filtered.map(item => {
+                {displayed.map(item => {
                   const draft = drafts[item.id] ?? item.draftReply;
                   const learningNote = learningNotes[item.id] ?? "";
                   const isActing = actingOnComm.has(item.id);
@@ -1161,6 +1169,11 @@ function HomeView() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+            {filtered.length > displayed.length && (
+              <div style={{ marginTop: 14, fontSize: 12, color: "var(--text-xsoft)", fontFamily: "Inter, sans-serif" }}>
+                Showing the {displayed.length} most urgent of {filtered.length}. Use the filters above or open the full queue in Notion.
               </div>
             )}
           </div>
