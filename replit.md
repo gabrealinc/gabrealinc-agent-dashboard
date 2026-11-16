@@ -2,7 +2,7 @@
 
 ## Current hosting
 
-As confirmed by Gabby on November 16, 2026, this GitHub repository is the dashboard source and the dashboard is deployed on Vercel. `vercel.json` contains the current deployment configuration. The Replit references below are historical development notes and should not be used to identify the current hosting or configure production.
+As confirmed by Gabby on November 16, 2026, this GitHub repository is the dashboard source and the dashboard is deployed on Vercel. `vercel.json` contains the current deployment configuration. The live dashboard is https://dashboard.gabrealinc.com/. Its password screen was checked on November 16, 2026. The Replit references below are historical development notes and should not be used to identify the current hosting or configure production.
 
 A personal operating system for Gabby — command center dashboard covering schedule, clients, finance, intelligence, agents, Substack, and spirit/wellness.
 
